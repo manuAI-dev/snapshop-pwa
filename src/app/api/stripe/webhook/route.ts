@@ -127,12 +127,21 @@ async function updateSubscription(subscription: Stripe.Subscription) {
 }
 
 async function upsertSubscription(userId: string, subscription: Stripe.Subscription) {
-  const priceItem = subscription.items?.data?.[0];
+  // Cast to any to handle varying Stripe SDK type definitions across versions
+  const sub = subscription as any;
+  const priceItem = sub.items?.data?.[0];
   const interval = priceItem?.price?.recurring?.interval || "month";
 
-  const tier = (subscription.status === "active" || subscription.status === "trialing")
+  const tier = (sub.status === "active" || sub.status === "trialing")
     ? "pro"
     : "free";
+
+  const periodStart = sub.current_period_start
+    ? new Date(sub.current_period_start * 1000).toISOString()
+    : null;
+  const periodEnd = sub.current_period_end
+    ? new Date(sub.current_period_end * 1000).toISOString()
+    : null;
 
   const { error } = await supabaseAdmin
     .from("subscriptions")
@@ -140,14 +149,14 @@ async function upsertSubscription(userId: string, subscription: Stripe.Subscript
       {
         user_id: userId,
         tier,
-        stripe_customer_id: subscription.customer as string,
-        stripe_subscription_id: subscription.id,
+        stripe_customer_id: String(sub.customer || ""),
+        stripe_subscription_id: sub.id,
         stripe_price_id: priceItem?.price?.id || null,
         billing_interval: interval,
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        cancel_at_period_end: subscription.cancel_at_period_end,
-        status: subscription.status,
+        current_period_start: periodStart,
+        current_period_end: periodEnd,
+        cancel_at_period_end: sub.cancel_at_period_end ?? false,
+        status: sub.status,
       },
       { onConflict: "user_id" }
     );
