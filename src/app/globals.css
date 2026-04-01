@@ -1,0 +1,185 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fonts werden über <link> im layout.tsx geladen (zuverlässiger in Safari) */
+
+:root {
+  --primary: #F2894F;
+  --primary-light: #FEF1E8;
+  --primary-dark: #CC3D10;
+  --secondary: #4B164C;
+  --tertiary: #E7DEC4;
+  --cream: #FFF3EB;
+  --cream-light: #FCF7F2;
+  --cream-item: #F9E3D5;
+  --heading: #212022;
+  --subheading: #525154;
+  --grey: #5A5A5A;
+  --grey-text: #9193A0;
+  --grey-silver: #CDD0D8;
+  --grey-border: #DCDDDC;
+  --accent-red: #E64949;
+  --accent-blue: #1C41FF;
+  --accent-green: #4CAF50;
+  --accent-orange: #FA7A2F;
+}
+
+/* Tailwind DEFAULT color overrides - ensure these always work */
+.bg-cream { background-color: #FFF3EB !important; }
+.bg-cream-light { background-color: #FCF7F2 !important; }
+.bg-cream-item { background-color: #F9E3D5 !important; }
+.bg-primary { background-color: #F2894F !important; }
+.bg-primary-light { background-color: #FEF1E8 !important; }
+.bg-secondary { background-color: #4B164C !important; }
+.text-primary { color: #F2894F !important; }
+.text-secondary { color: #4B164C !important; }
+.text-heading { color: #212022 !important; }
+.text-subheading { color: #525154 !important; }
+.text-grey-text { color: #9193A0 !important; }
+.text-grey { color: #5A5A5A !important; }
+.text-grey-silver { color: #CDD0D8 !important; }
+.text-accent-red { color: #E64949 !important; }
+.border-primary { border-color: #F2894F !important; }
+.border-grey-border { border-color: #DCDDDC !important; }
+.border-grey-silver { border-color: #CDD0D8 !important; }
+.shadow-primary\/30 { --tw-shadow-color: rgba(242,137,79,0.3); }
+.font-display { font-family: 'Montserrat', system-ui, sans-serif !important; }
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  background-color: #FFF3EB;
+  color: var(--heading);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+}
+
+html {
+  height: -webkit-fill-available;
+}
+
+html { scroll-behavior: smooth; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Komponenten-Styles mit direktem CSS statt @apply */
+@layer components {
+  .btn-primary {
+    width: 100%;
+    padding: 16px;
+    border-radius: 13px;
+    background-color: var(--primary);
+    color: white;
+    font-weight: 600;
+    font-size: 18px;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled {
+    background-color: var(--tertiary);
+    color: var(--grey-text);
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background-color: white;
+    color: var(--heading);
+    font-weight: 500;
+    font-size: 18px;
+    border: 1px solid var(--subheading);
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .btn-secondary:active { transform: scale(0.98); }
+  .btn-secondary:disabled {
+    color: var(--grey-text);
+    border-color: var(--grey-silver);
+  }
+
+  .btn-border {
+    padding: 6px 16px;
+    border-radius: 4px;
+    border: 2px solid var(--accent-blue);
+    color: var(--accent-blue);
+    font-weight: 500;
+    font-size: 14px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .btn-grey {
+    padding: 8px 20px;
+    border-radius: 100px;
+    background-color: #E2E2E3;
+    color: var(--heading);
+    font-weight: 500;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+  }
+
+  .input-field {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 15px;
+    background-color: white;
+    font-weight: 500;
+    border: 2px solid rgba(242, 137, 79, 0.07);
+    outline: none;
+    transition: border-color 0.2s;
+    font-size: 14px;
+    color: var(--heading);
+  }
+  .input-field::placeholder {
+    color: var(--grey-text);
+    font-weight: 400;
+  }
+  .input-field:focus {
+    border-color: rgba(242, 137, 79, 0.3);
+  }
+
+  .card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow: 0 4px 5px rgba(0, 0, 0, 0.08);
+  }
+
+  .shopping-item {
+    background-color: #FCF7F2;
+    border-radius: 30px;
+    padding: 16px;
+  }
+
+  .chip {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid #DADADA;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .chip-active {
+    background-color: #5E6162;
+    color: white;
+    border-color: #5E6162;
+  }
+  .chip-inactive {
+    background-color: #F1F1F1;
+    color: var(--grey);
+  }
+}
