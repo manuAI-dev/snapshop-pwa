@@ -88,6 +88,49 @@ WICHTIG:
 - Der letzte instruction-Schritt sollte IMMER Anrichte-Tipps enthalten.
 - Nährwerte PRO PORTION schätzen.`;
 
+// System-Prompt für Rezept-Extraktion aus Social-Media-Videos (Instagram Reels, TikTok)
+const RECIPE_FROM_VIDEO_PROMPT = `Du bist ein Experte für Rezepte und Kochen. Du erhältst ein Vorschaubild (Thumbnail) eines Koch-Videos von Instagram, TikTok oder YouTube Shorts, zusammen mit dem Caption-Text des Videos.
+
+Deine Aufgabe:
+1. Analysiere das Vorschaubild — es zeigt meist das FERTIGE GERICHT.
+2. Lies den Caption-Text sorgfältig — er enthält oft Zutaten, Schritte oder zumindest den Gerichtnamen.
+3. Kombiniere beide Informationsquellen zu einem vollständigen Rezept.
+
+WICHTIG ZUR TEXTWIEDERGABE:
+- Wenn der Caption Zutaten und Schritte enthält: Übernimm diese EXAKT und WÖRTLICH. Ergänze fehlende Details (Mengen, Zeiten) basierend auf dem Bild und deinem Wissen.
+- Wenn der Caption nur den Gerichtnamen enthält: Identifiziere das Gericht aus dem Bild und erstelle ein plausibles, detailliertes Rezept.
+- Wenn kein nützlicher Caption vorhanden ist: Analysiere das Bild und erstelle ein Rezept basierend auf dem, was du siehst.
+- Behalte die Originalsprache des Captions bei (meist Deutsch oder Englisch).
+- Gib realisische Zutaten an, die in einem Schweizer Supermarkt (Coop, Migros) erhältlich sind.
+
+Antworte AUSSCHLIESSLICH mit validem JSON in exakt dieser Struktur:
+{
+  "dishName": "Name des Gerichts",
+  "cuisine": "Küche (z.B. Italienisch, Deutsch, Asiatisch)",
+  "description": "Kurze Beschreibung des Gerichts — was es besonders macht, inspiriert vom Video-Content",
+  "ingredients": [
+    {"name": "Zutat", "quantity": "Menge", "unit": "Einheit", "category": "dairy|protein|grains|vegetables|fruits|spices|condiments|oils|beverages|other", "group": "Untergruppenname falls sinnvoll", "notes": "optional"}
+  ],
+  "instructions": ["Schritt 1", "Schritt 2", "..."],
+  "servings": 4,
+  "prepTime": 15,
+  "cookTime": 30,
+  "difficulty": "easy|medium|hard",
+  "nutrition": {
+    "calories": 450,
+    "protein": 18,
+    "fat": 22,
+    "carbs": 45,
+    "fiber": 6,
+    "sugar": 8
+  }
+}
+
+WICHTIG:
+- Nährwerte PRO PORTION schätzen.
+- Wenn der Caption Hashtags enthält, nutze sie als Hinweis für Gericht/Küche, aber ignoriere sie für Zutatenliste.
+- Bevorzuge die Informationen aus dem Caption über deine eigene Interpretation des Bildes.`;
+
 // System-Prompt für Rezept-Extraktion aus Webseiten
 const RECIPE_FROM_URL_PROMPT = `Du bist ein Experte für Rezepte. Du erhältst den Inhalt einer Rezeptseite — entweder als JSON-LD Structured Data (schema.org Recipe), als HTML-Text, oder beides. Extrahiere das Rezept und formatiere es als strukturiertes JSON.
 
@@ -201,7 +244,7 @@ export async function POST(request: NextRequest) {
     } else {
       // === URL oder vorextrahierter Text → Rezept ===
       const body = await request.json();
-      const { url, pageText } = body;
+      const { url, pageText, isVideo, videoImageUrl, platform } = body;
 
       if (!url && !pageText) {
         return NextResponse.json(
@@ -210,53 +253,107 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      let contentForAI: string;
+      // === Social Video Mode: Thumbnail + Caption → Rezept ===
+      if (isVideo && videoImageUrl) {
+        // Download the thumbnail image and convert to base64
+        try {
+          const imgResponse = await fetch(videoImageUrl, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+              "Accept": "image/*",
+            },
+          });
 
-      if (pageText) {
-        // Client hat den Seitentext bereits extrahiert (funktioniert für SPAs)
-        contentForAI = pageText.substring(0, 40000);
+          if (imgResponse.ok) {
+            const imgBuffer = await imgResponse.arrayBuffer();
+            const imgBase64 = Buffer.from(imgBuffer).toString("base64");
+            const imgType = imgResponse.headers.get("content-type") || "image/jpeg";
+
+            systemPrompt = RECIPE_FROM_VIDEO_PROMPT;
+            userContent = [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: imgType,
+                  data: imgBase64,
+                },
+              },
+              {
+                type: "text",
+                text: `Dieses Vorschaubild stammt aus einem Koch-Video auf ${platform || "Social Media"}.\n\nOriginal-URL: ${url}\n\n${pageText ? `Caption / Beschreibung des Videos:\n${pageText.substring(0, 20000)}` : "Kein Caption-Text verfügbar — analysiere das Bild und erstelle ein passendes Rezept."}\n\nExtrahiere das Rezept und antworte im JSON-Format.`,
+              },
+            ];
+          } else {
+            // Image download failed — fall back to text-only with video prompt
+            systemPrompt = RECIPE_FROM_VIDEO_PROMPT;
+            userContent = [
+              {
+                type: "text",
+                text: `Aus einem Koch-Video auf ${platform || "Social Media"} (${url}):\n\n${pageText ? `Caption / Beschreibung:\n${pageText.substring(0, 40000)}` : "Kein Inhalt verfügbar."}\n\nErstelle ein Rezept basierend auf diesen Informationen. Antworte im JSON-Format.`,
+              },
+            ];
+          }
+        } catch {
+          // Image fetch failed entirely — text-only fallback
+          systemPrompt = RECIPE_FROM_VIDEO_PROMPT;
+          userContent = [
+            {
+              type: "text",
+              text: `Aus einem Koch-Video auf ${platform || "Social Media"} (${url}):\n\n${pageText ? `Caption / Beschreibung:\n${pageText.substring(0, 40000)}` : "Kein Inhalt verfügbar."}\n\nErstelle ein Rezept basierend auf diesen Informationen. Antworte im JSON-Format.`,
+            },
+          ];
+        }
       } else {
-        // Fallback: Server-side Fetch (funktioniert für statische Seiten)
-        const pageResponse = await fetch(url, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml",
-          },
-        });
-        const html = await pageResponse.text();
+        // === Standard URL → Rezept ===
+        let contentForAI: string;
 
-        // Try to find JSON-LD structured data first (many recipe sites use this)
-        const jsonLdMatch = html.match(/<script\s+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
-        let jsonLdData = "";
-        if (jsonLdMatch) {
-          jsonLdData = jsonLdMatch.map(m =>
-            m.replace(/<script[^>]*>/i, "").replace(/<\/script>/i, "").trim()
-          ).join("\n");
-        }
-
-        // Strip HTML tags to get clean text
-        const cleanText = html
-          .replace(/<script[\s\S]*?<\/script>/gi, "")
-          .replace(/<style[\s\S]*?<\/style>/gi, "")
-          .replace(/<[^>]+>/g, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-
-        if (jsonLdData.length > 100) {
-          contentForAI = `JSON-LD Structured Data:\n${jsonLdData.substring(0, 20000)}\n\nPage Text:\n${cleanText.substring(0, 20000)}`;
+        if (pageText) {
+          // Client hat den Seitentext bereits extrahiert (funktioniert für SPAs)
+          contentForAI = pageText.substring(0, 40000);
         } else {
-          contentForAI = cleanText.substring(0, 40000);
-        }
-      }
+          // Fallback: Server-side Fetch (funktioniert für statische Seiten)
+          const pageResponse = await fetch(url, {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml",
+            },
+          });
+          const html = await pageResponse.text();
 
-      systemPrompt = RECIPE_FROM_URL_PROMPT;
-      userContent = [
-        {
-          type: "text",
-          text: `Extrahiere das Rezept aus folgendem Seiteninhalt:\n\n${contentForAI}`,
-        },
-      ];
+          // Try to find JSON-LD structured data first (many recipe sites use this)
+          const jsonLdMatch = html.match(/<script\s+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+          let jsonLdData = "";
+          if (jsonLdMatch) {
+            jsonLdData = jsonLdMatch.map(m =>
+              m.replace(/<script[^>]*>/i, "").replace(/<\/script>/i, "").trim()
+            ).join("\n");
+          }
+
+          // Strip HTML tags to get clean text
+          const cleanText = html
+            .replace(/<script[\s\S]*?<\/script>/gi, "")
+            .replace(/<style[\s\S]*?<\/style>/gi, "")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+
+          if (jsonLdData.length > 100) {
+            contentForAI = `JSON-LD Structured Data:\n${jsonLdData.substring(0, 20000)}\n\nPage Text:\n${cleanText.substring(0, 20000)}`;
+          } else {
+            contentForAI = cleanText.substring(0, 40000);
+          }
+        }
+
+        systemPrompt = RECIPE_FROM_URL_PROMPT;
+        userContent = [
+          {
+            type: "text",
+            text: `Extrahiere das Rezept aus folgendem Seiteninhalt:\n\n${contentForAI}`,
+          },
+        ];
+      }
     }
 
     // Anthropic Claude API Call
@@ -325,7 +422,26 @@ export async function POST(request: NextRequest) {
       jsonString = jsonMatch[1].trim();
     }
 
-    const recipeJson = JSON.parse(jsonString);
+    // Try to find JSON object in response even if surrounded by text
+    if (!jsonString.startsWith("{")) {
+      const jsonObjectMatch = jsonString.match(/\{[\s\S]*\}/);
+      if (jsonObjectMatch) {
+        jsonString = jsonObjectMatch[0];
+      }
+    }
+
+    let recipeJson;
+    try {
+      recipeJson = JSON.parse(jsonString);
+    } catch (parseError) {
+      // Claude responded with text instead of JSON — likely couldn't process the input
+      console.error("JSON parse failed. Claude response:", textContent.text.substring(0, 200));
+      const preview = textContent.text.substring(0, 150);
+      return NextResponse.json(
+        { error: `KI konnte kein Rezept erkennen. Antwort: "${preview}..."` },
+        { status: 422 }
+      );
+    }
 
     // Normalisieren: sicherstellen dass alle Felder vorhanden sind
     // Nutrition normalisieren

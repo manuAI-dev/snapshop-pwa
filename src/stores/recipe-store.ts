@@ -354,21 +354,43 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
       // Try to extract page text + image URL first
       let pageText: string | undefined;
       let extractedImageUrl: string | undefined;
+      let isVideo = false;
+      let platform: string | undefined;
       try {
         const proxyResponse = await fetch(`/api/recipe/extract-text?url=${encodeURIComponent(url)}`);
         if (proxyResponse.ok) {
           const data = await proxyResponse.json();
           pageText = data.text;
           extractedImageUrl = data.imageUrl;
+          isVideo = data.isVideo || false;
+          platform = data.platform;
+        } else {
+          // Check if extract-text returned a helpful error (e.g. Instagram blocked)
+          try {
+            const errData = await proxyResponse.json();
+            if (errData.error && errData.isVideo) {
+              throw new Error(errData.error);
+            }
+          } catch (e: any) {
+            if (e.message && e.message.includes("blockiert")) throw e;
+            // Otherwise continue — generate endpoint will try to handle it
+          }
         }
-      } catch {
+      } catch (e: any) {
+        if (e.message && e.message.includes("blockiert")) throw e;
         // Fallback: let server handle it directly
       }
 
       const response = await fetch("/api/recipe/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, pageText }),
+        body: JSON.stringify({
+          url,
+          pageText,
+          isVideo,
+          videoImageUrl: isVideo ? extractedImageUrl : undefined,
+          platform,
+        }),
       });
 
       if (!response.ok) {
