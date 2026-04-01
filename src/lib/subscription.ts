@@ -11,6 +11,9 @@
 
 import { supabase } from "@/lib/supabase";
 
+// Untyped Supabase client für neue Tabellen die noch nicht in den generierten Typen sind
+const db = supabase as any;
+
 export type SubscriptionTier = "free" | "pro";
 
 export interface SubscriptionPlan {
@@ -174,7 +177,7 @@ async function syncUsageToSupabase(featureKey: string, count: number): Promise<v
     if (!user) return;
 
     const month = getCurrentMonth();
-    const { error } = await supabase
+    const { error } = await db
       .from("feature_usage")
       .upsert(
         { user_id: user.id, feature_key: featureKey, month, count },
@@ -211,7 +214,7 @@ export async function loadTierFromSupabase(): Promise<SubscriptionTier> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return getSavedTier();
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("subscriptions")
       .select("tier, status, current_period_end")
       .eq("user_id", user.id)
@@ -219,7 +222,7 @@ export async function loadTierFromSupabase(): Promise<SubscriptionTier> {
 
     if (error || !data) {
       // Kein Subscription-Eintrag → erstellen
-      await supabase.from("subscriptions").upsert(
+      await db.from("subscriptions").upsert(
         { user_id: user.id, tier: "free" },
         { onConflict: "user_id" }
       );
@@ -257,7 +260,7 @@ export async function loadUsageFromSupabase(): Promise<void> {
     if (!user) return;
 
     const month = getCurrentMonth();
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from("feature_usage")
       .select("feature_key, count")
       .eq("user_id", user.id)
@@ -284,7 +287,7 @@ export async function getStripeCustomerId(): Promise<string | null> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data } = await supabase
+    const { data } = await db
       .from("subscriptions")
       .select("stripe_customer_id")
       .eq("user_id", user.id)
