@@ -77,9 +77,15 @@ export async function POST(req: NextRequest) {
       }
 
       case "invoice.payment_failed": {
-        const invoice = event.data.object as Stripe.Invoice;
-        if (invoice.subscription) {
-          await handlePaymentFailed(invoice.subscription as string);
+        const invoice = event.data.object as Stripe.Invoice & {
+          subscription?: string | Stripe.Subscription | null;
+        };
+        const subscriptionId =
+          typeof invoice.subscription === "string"
+            ? invoice.subscription
+            : invoice.subscription?.id;
+        if (subscriptionId) {
+          await handlePaymentFailed(subscriptionId);
         }
         break;
       }
