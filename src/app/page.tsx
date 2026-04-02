@@ -18,8 +18,15 @@ export default function RootPage() {
         // Logged in → go to app
         router.push("/rezepte");
       } else {
-        // Not logged in → show landing page
-        window.location.href = "/landing.html";
+        // Not logged in: check if they've been here before
+        const onboarded = typeof window !== "undefined" && localStorage.getItem("snapshop_onboarded");
+        if (onboarded) {
+          // Returning user → login
+          router.push("/login");
+        } else {
+          // First visit → landing page
+          window.location.href = "/landing.html";
+        }
       }
     }
   }, [isLoading, isAuthenticated, router]);
