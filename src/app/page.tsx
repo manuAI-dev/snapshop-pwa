@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 
-export default function LandingPage() {
+export default function RootPage() {
   const { isAuthenticated, isLoading, checkSession } = useAuthStore();
   const router = useRouter();
 
@@ -15,18 +15,18 @@ export default function LandingPage() {
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
+        // Logged in → go to app
         router.push("/rezepte");
       } else {
-        // Check if user has completed onboarding
-        const onboarded = typeof window !== "undefined" && localStorage.getItem("snapshop_onboarded");
-        router.push(onboarded ? "/login" : "/onboarding");
+        // Not logged in → show landing page
+        window.location.href = "/landing.html";
       }
     }
   }, [isLoading, isAuthenticated, router]);
 
   return (
     <div style={{
-      minHeight: "100vh",
+      minHeight: "100dvh",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
