@@ -168,16 +168,17 @@ export default function RecipeDetailPage() {
     setEditingIngIdx(null);
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !recipe.id) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
+    try {
+      const { compressImage } = await import("@/utils/compress-image");
+      const base64 = await compressImage(file, 1200, 0.75);
       const images = [...(recipe.recipeImages || []), base64];
       updateRecipe(recipe.id!, { recipeImages: images });
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Image compression failed:", err);
+    }
     e.target.value = "";
   };
 

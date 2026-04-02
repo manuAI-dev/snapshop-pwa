@@ -262,7 +262,7 @@ export default function KalenderPage() {
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           {pendingRecipe.recipeImages?.[0] && (
-            <img src={pendingRecipe.recipeImages[0]} alt="" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
+            <img loading="lazy" decoding="async" src={pendingRecipe.recipeImages[0]} alt="" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: 'white', fontFamily: "'Montserrat', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -417,7 +417,7 @@ export default function KalenderPage() {
                   }}
                 >
                   {meal.recipeImage ? (
-                    <img src={meal.recipeImage} alt={meal.recipeName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img loading="lazy" decoding="async" src={meal.recipeImage} alt={meal.recipeName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #F2894F, #CC3D10)' }} />
                   )}
@@ -692,7 +692,7 @@ function CalendarFeedPreview({ meal, onSaved, onClose }: {
         <div style={{ flexShrink: 0 }}>
           {imageUrl ? (
             <div style={{ position: 'relative', height: 200, overflow: 'hidden' }}>
-              <img src={imageUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img loading="lazy" decoding="async" src={imageUrl} alt={title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 40%)' }} />
               {meal.sourceName && (
                 <div style={{ position: 'absolute', top: 12, left: 12, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 6, padding: '3px 8px' }}>
@@ -1139,7 +1139,7 @@ function RecipePicker({ recipes, selectedDate, onSelect, onClose }: {
                 }}
               >
                 <div style={{ width: 56, height: 56, borderRadius: 12, overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #F2894F, #CC3D10)' }}>
-                  {recipe.recipeImages?.[0] && <img src={recipe.recipeImages[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  {recipe.recipeImages?.[0] && <img loading="lazy" decoding="async" src={recipe.recipeImages[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: '#462F4D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>

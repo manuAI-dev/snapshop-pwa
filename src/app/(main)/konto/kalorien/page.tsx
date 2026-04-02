@@ -220,7 +220,7 @@ export default function KalorienPage() {
                     }}>
                       {/* Photo or icon */}
                       {entry.photoUrl ? (
-                        <img src={entry.photoUrl} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+                        <img loading="lazy" decoding="async" src={entry.photoUrl} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
                       ) : (
                         <div style={{
                           width: 40, height: 40, borderRadius: 8, flexShrink: 0,
@@ -311,12 +311,16 @@ function AddCalorieModal({ mealType, date, onAdd, onClose }: {
     // Gate: caloriePhoto (AI-Foto-Analyse)
     if (!useSubFeature("caloriePhoto")) return;
 
-    // Preview anzeigen
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setPhotoPreview(ev.target?.result as string);
-    };
-    reader.readAsDataURL(file);
+    // Preview anzeigen (komprimiert)
+    try {
+      const { compressImage } = await import("@/utils/compress-image");
+      const compressed = await compressImage(file, 800, 0.7);
+      setPhotoPreview(compressed);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
+      reader.readAsDataURL(file);
+    }
 
     // AI-Analyse des Fotos (Kalorien schätzen)
     setIsAnalyzing(true);
@@ -394,7 +398,7 @@ function AddCalorieModal({ mealType, date, onAdd, onClose }: {
           />
           {photoPreview ? (
             <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', marginBottom: 8 }}>
-              <img src={photoPreview} alt="Gericht" style={{ width: '100%', height: 160, objectFit: 'cover' }} />
+              <img loading="lazy" decoding="async" src={photoPreview} alt="Gericht" style={{ width: '100%', height: 160, objectFit: 'cover' }} />
               {isAnalyzing && (
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

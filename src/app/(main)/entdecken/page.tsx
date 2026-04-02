@@ -170,7 +170,7 @@ function PreviewModal({ onSaved }: { onSaved: (recipeId: string) => void }) {
         <div style={{ flexShrink: 0 }}>
           {imageUrl ? (
             <div style={{ position: "relative", height: 200, overflow: "hidden" }}>
-              <img src={imageUrl} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img loading="lazy" decoding="async" src={imageUrl} alt={title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.3) 0%, transparent 40%)" }} />
               <div style={{ position: "absolute", top: 12, left: 12 }}>
                 <SourceBadge name={previewItem.sourceName} color={previewItem.sourceColor} />

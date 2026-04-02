@@ -225,7 +225,7 @@ export default function RezeptePage() {
               >
                 {/* Background */}
                 {recipe.recipeImages?.[0] ? (
-                  <img src={recipe.recipeImages[0]} alt={recipe.dishName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={recipe.recipeImages[0]} alt={recipe.dishName} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #F2894F 0%, #CC3D10 100%)' }} />
                 )}

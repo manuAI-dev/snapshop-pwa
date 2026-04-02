@@ -72,7 +72,7 @@ export default function RecipePreviewPage() {
           style={{ borderRadius: 20, overflow: 'hidden', position: 'relative', height: 220, background: 'linear-gradient(135deg, #F2894F 0%, #CC3D10 100%)', cursor: recipe.recipeImages?.[0] ? 'pointer' : 'default' }}
         >
           {recipe.recipeImages?.[0] && (
-            <img src={recipe.recipeImages[0]} alt={recipe.dishName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" decoding="async" src={recipe.recipeImages[0]} alt={recipe.dishName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           )}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)' }} />
           <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
@@ -99,7 +99,7 @@ export default function RecipePreviewPage() {
             onClick={() => setViewerImage(img)}
             style={{ width: 65, height: 65, borderRadius: 14, overflow: 'hidden', flexShrink: 0, cursor: 'pointer' }}
           >
-            <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img loading="lazy" decoding="async" src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
         ))}
         <div style={{ width: 65, height: 65, borderRadius: 14, border: '2px dashed #DCDDDC', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -235,7 +235,7 @@ export default function RecipePreviewPage() {
                     cursor: 'pointer', padding: 0,
                   }}
                 >
-                  <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img loading="lazy" decoding="async" src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </button>
               ))}
             </div>
