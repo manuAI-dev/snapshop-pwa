@@ -108,7 +108,7 @@ export default function OnboardingPage() {
   if (currentSlide === -1) {
     return (
       <div style={{
-        minHeight: "100vh", minHeight: "100dvh",
+        minHeight: "100dvh",
         backgroundColor: "#FFF3EB",
         display: "flex", flexDirection: "column",
         position: "relative", overflow: "hidden",
@@ -216,7 +216,7 @@ export default function OnboardingPage() {
 
   return (
     <div style={{
-      minHeight: "100vh", minHeight: "100dvh",
+      minHeight: "100dvh",
       backgroundColor: "#FFF3EB",
       display: "flex", flexDirection: "column",
       position: "relative", overflow: "hidden",
