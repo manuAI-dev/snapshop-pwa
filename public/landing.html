@@ -641,9 +641,29 @@
     .mockup-dots .dot {
       width: 8px; height: 8px; border-radius: 50%;
       background: rgba(255,255,255,0.2);
-      transition: background 0.3s;
+      transition: all 0.3s;
+      cursor: pointer;
     }
+    .mockup-dots .dot:hover { background: rgba(255,255,255,0.5); }
     .mockup-dots .dot.active { background: var(--orange); width: 24px; border-radius: 4px; }
+
+    /* slider arrow buttons */
+    .mockup-wrapper { position: relative; max-width: 1200px; margin: 0 auto; }
+    .slider-arrow {
+      position: absolute; top: 50%; transform: translateY(-70%);
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.15);
+      color: #fff; font-size: 22px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.3s, transform 0.3s;
+      z-index: 5; backdrop-filter: blur(8px);
+    }
+    .slider-arrow:hover { background: rgba(255,255,255,0.25); transform: translateY(-70%) scale(1.1); }
+    .slider-arrow.prev { left: -24px; }
+    .slider-arrow.next { right: -24px; }
+    @media (max-width: 768px) {
+      .slider-arrow { display: none; }
+    }
 
     @media (max-width: 768px) {
       .mockup-phone { width: 200px; height: 400px; }
@@ -859,6 +879,9 @@
     <p class="section-desc">Swipe durch die wichtigsten Screens — von der Rezepterkennung bis zur Einkaufsliste.</p>
   </div>
 
+  <div class="mockup-wrapper">
+  <button class="slider-arrow prev" id="sliderPrev" aria-label="Zurück">&#8249;</button>
+  <button class="slider-arrow next" id="sliderNext" aria-label="Weiter">&#8250;</button>
   <div class="mockup-scroll" id="mockupScroll">
 
     <!-- 1: Deine Lieblingsrezepte -->
@@ -946,15 +969,16 @@
     </div>
 
   </div>
+  </div>
 
-  <div class="mockup-dots">
-    <div class="dot active"></div>
-    <div class="dot"></div>
-    <div class="dot"></div>
-    <div class="dot"></div>
-    <div class="dot"></div>
-    <div class="dot"></div>
-    <div class="dot"></div>
+  <div class="mockup-dots" id="mockupDots">
+    <div class="dot active" data-index="0"></div>
+    <div class="dot" data-index="1"></div>
+    <div class="dot" data-index="2"></div>
+    <div class="dot" data-index="3"></div>
+    <div class="dot" data-index="4"></div>
+    <div class="dot" data-index="5"></div>
+    <div class="dot" data-index="6"></div>
   </div>
 </section>
 
@@ -1101,17 +1125,49 @@
     observer.observe(el);
   });
 
-  // Mockup scroll dot indicator (desktop)
+  // Mockup slider with dots + arrows
   const scrollContainer = document.getElementById('mockupScroll');
-  const dots = document.querySelectorAll('.mockup-dots .dot');
+  const dots = document.querySelectorAll('#mockupDots .dot');
+  const prevBtn = document.getElementById('sliderPrev');
+  const nextBtn = document.getElementById('sliderNext');
+
+  function getSlideWidth() {
+    const slide = scrollContainer.querySelector('.mockup-slide');
+    return slide ? slide.offsetWidth + 48 : 328;
+  }
+
+  function getActiveIndex() {
+    return Math.round(scrollContainer.scrollLeft / getSlideWidth());
+  }
+
+  function scrollToSlide(index) {
+    const slides = scrollContainer.querySelectorAll('.mockup-slide');
+    const maxIndex = slides.length - 1;
+    index = Math.max(0, Math.min(index, maxIndex));
+    scrollContainer.scrollTo({ left: index * getSlideWidth(), behavior: 'smooth' });
+  }
+
+  function updateDots(index) {
+    dots.forEach((d, i) => d.classList.toggle('active', i === index));
+  }
+
   if (scrollContainer && dots.length) {
+    // Scroll event updates dots
     scrollContainer.addEventListener('scroll', () => {
-      const slides = scrollContainer.querySelectorAll('.mockup-slide');
-      const scrollLeft = scrollContainer.scrollLeft;
-      const slideWidth = slides[0]?.offsetWidth + 48; // gap
-      const activeIndex = Math.round(scrollLeft / slideWidth);
-      dots.forEach((d, i) => d.classList.toggle('active', i === activeIndex));
+      updateDots(getActiveIndex());
     });
+
+    // Clickable dots
+    dots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        const idx = parseInt(dot.getAttribute('data-index'));
+        scrollToSlide(idx);
+      });
+    });
+
+    // Arrow buttons
+    if (prevBtn) prevBtn.addEventListener('click', () => scrollToSlide(getActiveIndex() - 1));
+    if (nextBtn) nextBtn.addEventListener('click', () => scrollToSlide(getActiveIndex() + 1));
   }
 </script>
 
