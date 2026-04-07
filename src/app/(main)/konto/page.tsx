@@ -1,8 +1,6 @@
 "use client";
 
 import { useAuthStore } from "@/stores/auth-store";
-import { useRecipeStore } from "@/stores/recipe-store";
-import { useShoppingStore } from "@/stores/shopping-store";
 import { useHouseholdStore } from "@/stores/household-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
 import { DIETARY_OPTIONS, ALLERGY_OPTIONS } from "@/types/household";
@@ -13,8 +11,7 @@ import { PwaInstallBanner } from "@/components/ui/pwa-install-prompt";
 
 export default function KontoPage() {
   const { user, logout } = useAuthStore();
-  const { recipes, loadRecipes } = useRecipeStore();
-  const { items } = useShoppingStore();
+  // recipes removed - stats row no longer shown
   const { household, members, invites, isLoading: hhLoading, loadHousehold, createHousehold, updateHouseholdProfile, inviteByEmail, generateInviteLink, joinByCode, removeMember, leaveHousehold, deleteHousehold, error: hhError, clearError: clearHhError } = useHouseholdStore();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,7 +27,7 @@ export default function KontoPage() {
   const [hhSuccess, setHhSuccess] = useState<string | null>(null);
   const [showProfileEditor, setShowProfileEditor] = useState(false);
 
-  useEffect(() => { loadRecipes(); }, [loadRecipes]);
+
   useEffect(() => { loadHousehold(); }, [loadHousehold]);
 
   useEffect(() => {
@@ -73,7 +70,7 @@ export default function KontoPage() {
   };
 
   const initials = user?.name?.charAt(0)?.toUpperCase() || "?";
-  const favoriteCount = recipes.filter(r => r.isFavorite).length;
+  // Stats removed
 
   // ============================================================
   // Shared Card Style
@@ -141,24 +138,6 @@ export default function KontoPage() {
           </div>
         </div>
 
-        {/* Stats row */}
-        <div style={{
-          display: 'flex', gap: 10, marginTop: 20,
-        }}>
-          {[
-            { value: recipes.length, label: "Rezepte", color: '#F2894F' },
-            { value: favoriteCount, label: "Favoriten", color: '#4B164C' },
-            { value: items.filter(i => !i.isChecked).length, label: "Einkauf", color: '#2E8D92' },
-          ].map((stat) => (
-            <div key={stat.label} style={{
-              flex: 1, backgroundColor: 'white', borderRadius: 14, padding: '14px 0',
-              textAlign: 'center', boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
-            }}>
-              <p style={{ fontSize: 22, fontWeight: 700, color: stat.color, fontFamily: "'Montserrat', sans-serif", marginBottom: 2, lineHeight: 1 }}>{stat.value}</p>
-              <p style={{ fontSize: 10, color: '#9193A0', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600 }}>{stat.label}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* ====== PWA INSTALL REMINDER ====== */}
@@ -174,7 +153,6 @@ export default function KontoPage() {
         <div style={{ ...cardStyle }}>
           <p style={{ fontSize: 11, fontWeight: 700, color: '#9193A0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Einstellungen</p>
           {[
-            { label: "Kalorien Tracker", desc: "Tägliche Ernährung tracken", color: "#F2894F", icon: "M12 20V10M18 20V4M6 20v-4", action: () => router.push("/konto/kalorien") },
             { label: "Haushalt", desc: household ? `${members.length} Mitglieder` : "Familie oder WG einrichten", color: "#7B2D7D", icon: "m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", action: () => { const el = document.getElementById('haushalt-section'); el?.scrollIntoView({ behavior: 'smooth' }); } },
             { label: "Hilfe & Feedback", desc: "Fragen oder Vorschläge?", color: "#2E8D92", icon: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3 M12 17h.01", action: () => { window.location.href = "mailto:support@wesnapshop.ch?subject=SnapShop Feedback"; } },
           ].map(({ label, desc, color, icon, action }, i, arr) => (

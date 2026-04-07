@@ -11,7 +11,7 @@ interface ScanModalProps {
 }
 
 type Phase = "input" | "analyzing" | "fridge-results" | "fridge-generating";
-type InputTab = "foto" | "url" | "kuehlschrank" | "restaurant";
+type InputTab = "foto" | "url" | "kuehlschrank" | "restaurant" | "kalorien";
 
 interface DetectedIngredient {
   name: string;
@@ -500,6 +500,32 @@ export default function ScanModal({ isOpen, onClose }: ScanModalProps) {
               <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>
             </svg>
             Dish
+          </button>
+          <button
+            onClick={() => { resetAndClose(); router.push("/konto/kalorien"); }}
+            style={{
+              flex: 1,
+              padding: "12px 0",
+              borderRadius: 11,
+              border: "none",
+              backgroundColor: activeTab === "kalorien" ? "white" : "transparent",
+              color: activeTab === "kalorien" ? "#212022" : "#9193A0",
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              boxShadow: activeTab === "kalorien" ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+              transition: "all 0.2s",
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={activeTab === "kalorien" ? "#F2894F" : "#9193A0"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" />
+            </svg>
+            Kcal
           </button>
         </div>
 
