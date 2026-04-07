@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 // ============================================================
@@ -81,6 +81,11 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(-1); // -1 = welcome
   const [animKey, setAnimKey] = useState(0);
+
+  // Mark onboarding as seen immediately so it never shows again on login
+  useEffect(() => {
+    localStorage.setItem("snapshop_onboarded", "true");
+  }, []);
 
   const goToSlide = useCallback((index: number) => {
     setAnimKey(prev => prev + 1);
