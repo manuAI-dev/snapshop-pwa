@@ -22,7 +22,8 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await login(email, password);
-      router.push("/rezepte");
+      const onboarded = localStorage.getItem("snapshop_onboarded");
+      router.push(onboarded ? "/rezepte" : "/onboarding");
     } catch {}
   };
 
