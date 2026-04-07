@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { Recipe, getTotalTime } from "@/types";
 import AppHeader from "@/components/ui/app-header";
+import { PwaInstallPopup } from "@/components/ui/pwa-install-prompt";
 
 type SortMode = "neuste" | "aelteste";
 type FilterTag = "likes" | "stars" | "online" | "buch" | "fooby" | "bettybossi" | "migusto" | "swissmilk" | "eigene";
@@ -58,6 +59,9 @@ export default function RezeptePage() {
 
   return (
     <div style={{ backgroundColor: '#FFF3EB', minHeight: '100vh', paddingBottom: 90 }}>
+      {/* PWA Install Popup — shows once after onboarding */}
+      <PwaInstallPopup />
+
       {/* Header with Logo + Account */}
       <AppHeader title="Deine Rezepte" />
 

@@ -9,6 +9,7 @@ import { DIETARY_OPTIONS, ALLERGY_OPTIONS } from "@/types/household";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { SnapShopLogo } from "@/components/ui/app-header";
+import { PwaInstallBanner } from "@/components/ui/pwa-install-prompt";
 
 export default function KontoPage() {
   const { user, logout } = useAuthStore();
@@ -98,9 +99,7 @@ export default function KontoPage() {
             <SnapShopLogo size={20} />
             <span style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 14, fontWeight: 700, color: '#4B164C' }}>Mein Konto</span>
           </div>
-          <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: '#9193A0', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Abmelden
-          </button>
+          <span style={{ fontSize: 11, color: '#D4C9BF' }}>v1.0</span>
         </div>
 
         {/* Profile row */}
@@ -162,68 +161,28 @@ export default function KontoPage() {
         </div>
       </div>
 
+      {/* ====== PWA INSTALL REMINDER ====== */}
+      <div style={{ paddingTop: 12 }}>
+        <PwaInstallBanner />
+      </div>
+
       {/* ====== SUBSCRIPTION STATUS ====== */}
       <SubscriptionBanner />
 
-      {/* ====== QUICK ACTIONS ====== */}
-      <div style={{ padding: '8px 20px 0', display: 'flex', gap: 10 }}>
-        {/* Kalorien-Tracker */}
-        <button
-          onClick={() => router.push("/konto/kalorien")}
-          style={{
-            flex: 1, borderRadius: 16, overflow: 'hidden',
-            border: 'none', cursor: 'pointer', padding: '16px 14px', textAlign: 'left',
-            background: 'linear-gradient(135deg, #F2894F 0%, #E67A3C 100%)',
-            boxShadow: '0 4px 16px rgba(242,137,79,0.2)',
-            display: 'flex', flexDirection: 'column', gap: 8,
-          }}
-        >
-          <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" /></svg>
-          </div>
-          <div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 700, color: 'white', margin: 0 }}>Kalorien</p>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', margin: '2px 0 0' }}>Tracker</p>
-          </div>
-        </button>
-
-        {/* Haushalt Quick-Status */}
-        <button
-          onClick={() => {
-            const hhSection = document.getElementById('haushalt-section');
-            hhSection?.scrollIntoView({ behavior: 'smooth' });
-          }}
-          style={{
-            flex: 1, borderRadius: 16, overflow: 'hidden',
-            border: 'none', cursor: 'pointer', padding: '16px 14px', textAlign: 'left',
-            background: 'linear-gradient(135deg, #4B164C 0%, #6B2D6E 100%)',
-            boxShadow: '0 4px 16px rgba(75,22,76,0.15)',
-            display: 'flex', flexDirection: 'column', gap: 8,
-          }}
-        >
-          <div style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          </div>
-          <div>
-            <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 700, color: 'white', margin: 0 }}>Haushalt</p>
-            <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', margin: '2px 0 0' }}>{household ? `${members.length} Mitgl.` : 'Einrichten'}</p>
-          </div>
-        </button>
-      </div>
-
-      {/* ====== KONTOEINSTELLUNGEN (direkt sichtbar) ====== */}
-      <div style={{ padding: '20px 20px 0' }}>
+      {/* ====== EINSTELLUNGEN ====== */}
+      <div style={{ padding: '16px 20px 0' }}>
         <div style={{ ...cardStyle }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#9193A0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Konto</p>
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#9193A0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 14, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Einstellungen</p>
           {[
-            { label: "Abo verwalten", desc: "Free Plan", color: "#F2894F", icon: "M6 3h12l4 6-10 13L2 9Z" },
-            { label: "E-Mail-Adresse", desc: user?.email || "", color: "#4B164C", icon: "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6" },
-            { label: "Daten & Speicher", desc: "Lokal + Cloud", color: "#2E8D92", icon: "M12 20V10M18 20V4M6 20v-4" },
-            { label: "Hilfe & Feedback", desc: "Support kontaktieren", color: "#9193A0", icon: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3 M12 17h.01" },
-          ].map(({ label, desc, color, icon }, i, arr) => (
-            <div key={label} style={{
+            { label: "Kalorien Tracker", desc: "Tägliche Ernährung tracken", color: "#F2894F", icon: "M12 20V10M18 20V4M6 20v-4", action: () => router.push("/konto/kalorien") },
+            { label: "Haushalt", desc: household ? `${members.length} Mitglieder` : "Familie oder WG einrichten", color: "#7B2D7D", icon: "m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", action: () => { const el = document.getElementById('haushalt-section'); el?.scrollIntoView({ behavior: 'smooth' }); } },
+            { label: "Hilfe & Feedback", desc: "Fragen oder Vorschläge?", color: "#2E8D92", icon: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3 M12 17h.01", action: () => { window.location.href = "mailto:support@wesnapshop.ch?subject=SnapShop Feedback"; } },
+          ].map(({ label, desc, color, icon, action }, i, arr) => (
+            <button key={label} onClick={action} style={{
               display: 'flex', alignItems: 'center', gap: 12, padding: '13px 0',
               borderBottom: i < arr.length - 1 ? '1px solid #F5F0EC' : 'none',
+              width: '100%', background: 'none', border: 'none', borderBottomStyle: i < arr.length - 1 ? 'solid' : 'none',
+              borderBottomWidth: 1, borderBottomColor: '#F5F0EC', cursor: 'pointer', textAlign: 'left',
             }}>
               <div style={{
                 width: 34, height: 34, borderRadius: 10,
@@ -239,9 +198,24 @@ export default function KontoPage() {
                 {desc && <span style={{ fontSize: 11, color: '#9193A0' }}>{desc}</span>}
               </div>
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D4C9BF" strokeWidth="2"><path d="m9 18 6-6-6-6"/></svg>
-            </div>
+            </button>
           ))}
         </div>
+      </div>
+
+      {/* ====== ABMELDEN ====== */}
+      <div style={{ padding: '12px 20px 0' }}>
+        <button onClick={handleLogout} style={{
+          width: '100%', padding: '14px 18px', borderRadius: 14,
+          backgroundColor: 'white', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
+        }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E64949" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          <span style={{ fontSize: 14, fontWeight: 600, color: '#E64949', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Abmelden</span>
+        </button>
       </div>
 
       {/* ====== HAUSHALT SECTION ====== */}
@@ -435,7 +409,7 @@ export default function KontoPage() {
 
       {/* Version */}
       <div style={{ textAlign: 'center', padding: '28px 20px 0' }}>
-        <p style={{ fontSize: 10, color: '#D4C9BF' }}>SnapShop v1.0 · Made with AI</p>
+        <p style={{ fontSize: 10, color: '#D4C9BF' }}>SnapShop v1.0</p>
       </div>
 
       {/* ====== MODALS ====== */}
