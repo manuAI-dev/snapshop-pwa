@@ -115,7 +115,7 @@ export default function OnboardingPage() {
       }}>
         {/* Hero image – 40% of screen */}
         <div style={{
-          flex: "0 0 40%", position: "relative", overflow: "hidden",
+          flex: "0 0 32%", position: "relative", overflow: "hidden",
         }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -224,7 +224,7 @@ export default function OnboardingPage() {
 
       {/* Image area – 40% of screen */}
       <div style={{
-        flex: "0 0 40%", position: "relative", overflow: "hidden",
+        flex: "0 0 32%", position: "relative", overflow: "hidden",
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
