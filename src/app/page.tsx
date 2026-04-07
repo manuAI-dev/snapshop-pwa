@@ -15,8 +15,9 @@ export default function RootPage() {
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        // Logged in → go to app
-        router.push("/rezepte");
+        // Logged in → check if onboarding completed
+        const onboarded = typeof window !== "undefined" && localStorage.getItem("snapshop_onboarded");
+        router.push(onboarded ? "/rezepte" : "/onboarding");
       } else {
         // Not logged in: check if they've been here before
         const onboarded = typeof window !== "undefined" && localStorage.getItem("snapshop_onboarded");
