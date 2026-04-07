@@ -99,7 +99,7 @@ export default function OnboardingPage() {
     if (typeof window !== "undefined") {
       localStorage.setItem("snapshop_onboarded", "true");
     }
-    router.push("/login");
+    router.push("/rezepte");
   }, [router]);
 
   // ============================================================
@@ -113,9 +113,9 @@ export default function OnboardingPage() {
         display: "flex", flexDirection: "column",
         position: "relative", overflow: "hidden",
       }}>
-        {/* Hero image */}
+        {/* Hero image – 40% of screen */}
         <div style={{
-          flex: "0 0 52%", position: "relative", overflow: "hidden",
+          flex: "0 0 40%", position: "relative", overflow: "hidden",
         }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -132,28 +132,6 @@ export default function OnboardingPage() {
             position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
             background: "linear-gradient(to top, #FFF3EB 0%, transparent 100%)",
           }} />
-          {/* AI badge */}
-          <div style={{
-            position: "absolute", top: "max(env(safe-area-inset-top, 12px), 48px)", left: 24,
-            background: "rgba(255,255,255,0.92)", backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            borderRadius: 14, padding: "10px 16px",
-            display: "flex", alignItems: "center", gap: 8,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-            fontSize: 13, fontWeight: 600, color: "#4B164C",
-            animation: "onb-slide-down 0.6s 0.3s ease-out both",
-          }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: "linear-gradient(135deg, #FFD5D5, #F2894F)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z" />
-              </svg>
-            </div>
-            AI-powered
-          </div>
         </div>
 
         {/* Content */}
@@ -168,22 +146,28 @@ export default function OnboardingPage() {
           <h1 style={{
             fontFamily: "'Montserrat', sans-serif",
             fontSize: 26, fontWeight: 700, color: "#4B164C",
-            marginTop: 24, marginBottom: 10, lineHeight: 1.25,
+            marginTop: 20, marginBottom: 8, lineHeight: 1.25,
           }}>
             Deine smarte<br />Rezeptwelt
           </h1>
 
           <p style={{
             fontSize: 15, color: "#73503D", lineHeight: 1.6,
-            maxWidth: 280, marginBottom: 32,
+            maxWidth: 280, marginBottom: 24,
           }}>
             Fotografiere Rezepte, scanne Zutaten und koche smarter — mit AI.
           </p>
+        </div>
 
+        {/* CTA fixed at bottom */}
+        <div style={{
+          padding: "0 32px",
+          paddingBottom: "calc(32px + env(safe-area-inset-bottom, 0px))",
+        }}>
           <button
             onClick={() => goToSlide(0)}
             style={{
-              width: "100%", maxWidth: 300,
+              width: "100%",
               padding: "16px 32px", borderRadius: 16,
               background: "#F2894F", border: "none",
               color: "#fff", fontSize: 16, fontWeight: 700,
@@ -202,7 +186,6 @@ export default function OnboardingPage() {
 
         <style>{`
           @keyframes onb-zoom-in { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
-          @keyframes onb-slide-down { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
         `}</style>
       </div>
     );
@@ -239,9 +222,9 @@ export default function OnboardingPage() {
         Überspringen
       </button>
 
-      {/* Image area – top 50% */}
+      {/* Image area – 40% of screen */}
       <div style={{
-        flex: "0 0 50%", position: "relative", overflow: "hidden",
+        flex: "0 0 40%", position: "relative", overflow: "hidden",
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -279,8 +262,10 @@ export default function OnboardingPage() {
       <div
         key={`content-${animKey}`}
         style={{
-          flex: 1, display: "flex", flexDirection: "column",
+          flex: "1 1 auto", display: "flex", flexDirection: "column",
+          justifyContent: "center",
           padding: "0 32px",
+          overflow: "hidden",
           animation: "onb-fade-up 0.5s ease-out both",
         }}
       >
@@ -313,11 +298,12 @@ export default function OnboardingPage() {
         </p>
       </div>
 
-      {/* Bottom navigation */}
+      {/* Bottom navigation – always visible */}
       <div style={{
-        padding: "20px 32px",
+        flexShrink: 0,
+        padding: "16px 32px",
         paddingBottom: "calc(24px + env(safe-area-inset-bottom, 0px))",
-        display: "flex", flexDirection: "column", gap: 20,
+        display: "flex", flexDirection: "column", gap: 16,
       }}>
         {/* Progress bar (clickable) */}
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

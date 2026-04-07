@@ -25,7 +25,7 @@ export default function RegisterPage() {
     if (password !== passwordConfirm || !acceptTerms) return;
     try {
       await register(email, password, name);
-      router.push("/rezepte");
+      router.push("/onboarding");
     } catch (err: any) {
       if (err?.message === "CONFIRM_EMAIL") {
         setConfirmEmail(true);
