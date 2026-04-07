@@ -113,16 +113,16 @@ export default function OnboardingPage() {
         display: "flex", flexDirection: "column",
         position: "relative", overflow: "hidden",
       }}>
-        {/* Hero image – 40% of screen */}
+        {/* Hero image – capped height */}
         <div style={{
-          flex: "0 0 32%", position: "relative", overflow: "hidden",
+          flex: "0 0 auto", maxHeight: "35vh", position: "relative", overflow: "hidden",
         }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/screenshots/andrej_liebemann_Rezeptbuch_close_up_steht_auf_in_der_Kche_auf__a8f47aa1-f29b-4fea-a01b-66e24eaa2008.png"
             alt="Kochbuch auf Küchenablage"
             style={{
-              width: "100%", height: "100%",
+              width: "100%", height: "35vh",
               objectFit: "cover",
               animation: "onb-zoom-in 0.8s ease-out both",
             }}
@@ -138,8 +138,8 @@ export default function OnboardingPage() {
         <div style={{
           flex: 1, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
-          padding: "0 32px", textAlign: "center",
-          marginTop: -20,
+          padding: "0 24px", textAlign: "center",
+          marginTop: -16,
         }}>
           <Logo />
 
@@ -222,9 +222,9 @@ export default function OnboardingPage() {
         Überspringen
       </button>
 
-      {/* Image area – 40% of screen */}
+      {/* Image area – capped height */}
       <div style={{
-        flex: "0 0 32%", position: "relative", overflow: "hidden",
+        flex: "0 0 auto", maxHeight: "35vh", position: "relative", overflow: "hidden",
       }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -232,7 +232,7 @@ export default function OnboardingPage() {
           src={slide.image}
           alt={slide.title}
           style={{
-            width: "100%", height: "100%",
+            width: "100%", height: "35vh",
             objectFit: "cover",
             animation: "onb-img-in 0.5s ease-out both",
           }}
