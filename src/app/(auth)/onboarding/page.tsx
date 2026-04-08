@@ -92,20 +92,20 @@ export default function OnboardingPage() {
     setCurrentSlide(index);
   }, []);
 
-  const handleNext = useCallback(() => {
-    if (currentSlide < slides.length - 1) {
-      goToSlide(currentSlide + 1);
-    } else {
-      finishOnboarding();
-    }
-  }, [currentSlide, goToSlide]);
-
   const finishOnboarding = useCallback(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("snapshop_onboarded", "true");
     }
     router.push("/rezepte");
   }, [router]);
+
+  const handleNext = useCallback(() => {
+    if (currentSlide < slides.length - 1) {
+      goToSlide(currentSlide + 1);
+    } else {
+      finishOnboarding();
+    }
+  }, [currentSlide, goToSlide, finishOnboarding]);
 
   // ============================================================
   // Welcome Screen

@@ -447,11 +447,13 @@ export default function RezeptePage() {
                     onClick={() => !isEditing && openListAsFilter(list.id)}
                     style={{
                       borderRadius: 16,
-                      overflow: 'hidden',
+                      overflow: menuListId === list.id ? 'visible' : 'hidden',
                       backgroundColor: 'white',
                       boxShadow: '0 2px 10px rgba(0,0,0,0.06)',
                       cursor: isEditing ? 'default' : 'pointer',
                       transition: 'transform 0.15s',
+                      position: 'relative',
+                      zIndex: menuListId === list.id ? 61 : 'auto',
                     }}
                   >
                     {/* Thumbnail area */}
