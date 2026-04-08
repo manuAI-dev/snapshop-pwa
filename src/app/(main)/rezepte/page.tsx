@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRecipeStore } from "@/stores/recipe-store";
+import { useRecipeListStore } from "@/stores/recipe-list-store";
 import { Recipe, getTotalTime } from "@/types";
 import AppHeader from "@/components/ui/app-header";
 import { PwaInstallPopup } from "@/components/ui/pwa-install-prompt";
@@ -22,11 +23,15 @@ function getSourceFromUrl(url?: string): { id: string; name: string; color: stri
 
 export default function RezeptePage() {
   const { recipes, isLoading, loadRecipes, updateRecipe } = useRecipeStore();
+  const { lists } = useRecipeListStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>("neuste");
   const [activeFilters, setActiveFilters] = useState<FilterTag[]>([]);
+  const [activeListId, setActiveListId] = useState<string | null>(null);
+  const [showNewListInput, setShowNewListInput] = useState(false);
+  const [newListName, setNewListName] = useState("");
 
   useEffect(() => {
     loadRecipes();
@@ -37,6 +42,9 @@ export default function RezeptePage() {
       prev.includes(tag) ? prev.filter((f) => f !== tag) : [...prev, tag]
     );
   };
+
+  // Get the active list if one is selected
+  const activeList = activeListId ? lists.find((l) => l.id === activeListId) : null;
 
   const filtered = recipes
     .filter((r) => !search || r.dishName.toLowerCase().includes(search.toLowerCase()))
@@ -52,6 +60,13 @@ export default function RezeptePage() {
       }
       return true;
     })
+    .filter((r) => {
+      // If a list is active, only show recipes in that list
+      if (activeList) {
+        return activeList.recipeIds.includes(r.id || "");
+      }
+      return true;
+    })
     .sort((a, b) => {
       if (sortMode === "aelteste") return (a.createdAt || "").localeCompare(b.createdAt || "");
       return (b.createdAt || "").localeCompare(a.createdAt || "");
@@ -64,6 +79,202 @@ export default function RezeptePage() {
 
       {/* Header with Logo + Account */}
       <AppHeader title="Deine Rezepte" />
+
+      {/* Recipe Lists — horizontal scrollable cards */}
+      <div style={{ padding: '12px 20px', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, scrollBehavior: 'smooth' }} className="no-scrollbar">
+          {/* List Cards */}
+          {lists.map((list) => {
+            const isActive = activeListId === list.id;
+            const listRecipeCount = list.recipeIds.length;
+            // Get first recipe image as thumbnail, or use colored circle
+            const firstRecipeImage = listRecipeCount > 0
+              ? recipes.find((r) => r.id === list.recipeIds[0])?.recipeImages?.[0]
+              : null;
+
+            return (
+              <button
+                key={list.id}
+                onClick={() => setActiveListId(isActive ? null : list.id)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: 0,
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                  minWidth: 80,
+                  flexShrink: 0,
+                }}
+              >
+                {/* Thumbnail */}
+                <div
+                  style={{
+                    width: 70,
+                    height: 70,
+                    borderRadius: 16,
+                    overflow: 'hidden',
+                    border: isActive ? `3px solid ${list.color}` : '3px solid transparent',
+                    backgroundColor: firstRecipeImage ? undefined : list.color,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    transition: 'all 0.2s',
+                    boxShadow: isActive ? `0 4px 12px ${list.color}33` : '0 2px 8px rgba(0,0,0,0.08)',
+                  }}
+                >
+                  {firstRecipeImage ? (
+                    <img src={firstRecipeImage} alt={list.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                  )}
+                </div>
+                {/* Name + count */}
+                <div style={{ textAlign: 'center', minWidth: 0 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#212022', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    {list.name}
+                  </p>
+                  <p style={{ fontSize: 10, color: '#9193A0', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                    {listRecipeCount} {listRecipeCount === 1 ? 'Rezept' : 'Rezepte'}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+
+          {/* New List Button */}
+          {!showNewListInput && (
+            <button
+              onClick={() => setShowNewListInput(true)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+                padding: 0,
+                border: '2px dashed #DCDDDC',
+                backgroundColor: 'white',
+                borderRadius: 16,
+                cursor: 'pointer',
+                minWidth: 80,
+                height: 'auto',
+                flexShrink: 0,
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#F2894F';
+                e.currentTarget.style.backgroundColor = '#FFF8F5';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#DCDDDC';
+                e.currentTarget.style.backgroundColor = 'white';
+              }}
+            >
+              <div style={{ width: 70, height: 70, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#F2894F" strokeWidth="2"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+              </div>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#F2894F', lineHeight: 1.2, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                Neue
+              </p>
+              <p style={{ fontSize: 12, fontWeight: 600, color: '#F2894F', lineHeight: 1.2, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                Liste
+              </p>
+            </button>
+          )}
+
+          {/* New List Input */}
+          {showNewListInput && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                padding: 12,
+                backgroundColor: 'white',
+                borderRadius: 16,
+                border: '2px solid #F2894F',
+                minWidth: 140,
+                flexShrink: 0,
+              }}
+            >
+              <input
+                autoFocus
+                type="text"
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newListName.trim()) {
+                    useRecipeListStore.getState().createList(newListName.trim());
+                    setNewListName("");
+                    setShowNewListInput(false);
+                  }
+                  if (e.key === 'Escape') {
+                    setNewListName("");
+                    setShowNewListInput(false);
+                  }
+                }}
+                placeholder="Name..."
+                style={{
+                  padding: '6px 8px',
+                  borderRadius: 8,
+                  border: '1px solid #E0E0E0',
+                  fontSize: 12,
+                  outline: 'none',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
+              />
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={() => {
+                    if (newListName.trim()) {
+                      useRecipeListStore.getState().createList(newListName.trim());
+                      setNewListName("");
+                      setShowNewListInput(false);
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '4px 8px',
+                    backgroundColor: '#F2894F',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}
+                >
+                  OK
+                </button>
+                <button
+                  onClick={() => {
+                    setNewListName("");
+                    setShowNewListInput(false);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '4px 8px',
+                    backgroundColor: '#FCF7F2',
+                    color: '#9193A0',
+                    border: 'none',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Search Bar */}
       <div style={{ padding: '0 20px' }}>
