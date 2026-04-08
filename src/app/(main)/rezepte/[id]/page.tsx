@@ -42,8 +42,16 @@ export default function RecipeDetailPage() {
   const [sourceInput, setSourceInput] = useState("");
   const [showListModal, setShowListModal] = useState(false);
   const [newListInput, setNewListInput] = useState("");
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { useFeature: useSubFeature } = useSubscriptionStore();
   const { lists, addRecipeToList, removeRecipeFromList, createList, getListsForRecipe } = useRecipeListStore();
+
+  const showToast = (msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToastMsg(msg);
+    toastTimer.current = setTimeout(() => setToastMsg(null), 2200);
+  };
 
   const startCookingMode = (step: number) => {
     // Gate: cookingMode
@@ -739,8 +747,10 @@ export default function RecipeDetailPage() {
                         if (recipe.id) {
                           if (isInList) {
                             removeRecipeFromList(list.id, recipe.id);
+                            showToast(`Aus „${list.name}" entfernt`);
                           } else {
                             addRecipeToList(list.id, recipe.id);
+                            showToast(`Zu „${list.name}" hinzugefügt ✓`);
                           }
                         }
                       }}
@@ -804,11 +814,13 @@ export default function RecipeDetailPage() {
                   onChange={(e) => setNewListInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && newListInput.trim()) {
-                      const newList = createList(newListInput.trim());
+                      const name = newListInput.trim();
+                      const newList = createList(name);
                       if (recipe.id) {
                         addRecipeToList(newList.id, recipe.id);
                       }
                       setNewListInput("");
+                      showToast(`„${name}" erstellt und hinzugefügt ✓`);
                     }
                   }}
                   placeholder="z.B. Schnelle Rezepte"
@@ -825,11 +837,13 @@ export default function RecipeDetailPage() {
                 <button
                   onClick={() => {
                     if (newListInput.trim()) {
-                      const newList = createList(newListInput.trim());
+                      const name = newListInput.trim();
+                      const newList = createList(name);
                       if (recipe.id) {
                         addRecipeToList(newList.id, recipe.id);
                       }
                       setNewListInput("");
+                      showToast(`„${name}" erstellt und hinzugefügt ✓`);
                     }
                   }}
                   style={{
@@ -871,6 +885,37 @@ export default function RecipeDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 100,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#212022',
+            color: 'white',
+            padding: '10px 20px',
+            borderRadius: 12,
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+            zIndex: 200,
+            whiteSpace: 'nowrap',
+            animation: 'toastIn 0.25s ease-out',
+          }}
+        >
+          {toastMsg}
+        </div>
+      )}
+      <style>{`
+        @keyframes toastIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
