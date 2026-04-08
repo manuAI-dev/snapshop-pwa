@@ -96,7 +96,7 @@ export default function RecipeDetailPage() {
 
   const handleDelete = async () => {
     if (recipe.id) {
-      deleteRecipe(recipe.id);
+      deleteRecipe(recipe.id!);
       router.push("/rezepte");
     }
   };
@@ -105,14 +105,14 @@ export default function RecipeDetailPage() {
     const newVal = !isFavorite;
     setIsFavorite(newVal);
     if (recipe.id) {
-      updateRecipe(recipe.id, { isFavorite: newVal });
+      updateRecipe(recipe.id!, { isFavorite: newVal });
     }
   };
 
   const handleSetRating = (stars: number) => {
     setRating(stars);
     if (recipe.id) {
-      updateRecipe(recipe.id, { rating: stars });
+      updateRecipe(recipe.id!, { rating: stars });
     }
   };
 
@@ -170,7 +170,7 @@ export default function RecipeDetailPage() {
       quantity: editIngData.quantity,
       unit: editIngData.unit,
     };
-    updateRecipe(recipe.id, { ingredients: newIngredients });
+    updateRecipe(recipe.id!, { ingredients: newIngredients });
     setEditingIngIdx(null);
   };
 
@@ -338,7 +338,7 @@ export default function RecipeDetailPage() {
           // Editing mode — inline input
           if (editingSource) {
             return (
-              <form onSubmit={(e) => { e.preventDefault(); const val = sourceInput.trim(); updateRecipe(recipe.id, { sourceUrl: val || undefined }); setEditingSource(false); }}
+              <form onSubmit={(e) => { e.preventDefault(); const val = sourceInput.trim(); updateRecipe(recipe.id!, { sourceUrl: val || undefined }); setEditingSource(false); }}
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <input
                   autoFocus
