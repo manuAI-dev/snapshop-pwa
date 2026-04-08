@@ -37,6 +37,8 @@ export default function RecipeDetailPage() {
   const [altData, setAltData] = useState<{ originalIngredient: string; isExotic: boolean; alternatives: { name: string; ratio: string; note: string }[]; tip?: string } | null>(null);
   const [cookingMode, setCookingMode] = useState(false);
   const [cookingStep, setCookingStep] = useState(0);
+  const [editingSource, setEditingSource] = useState(false);
+  const [sourceInput, setSourceInput] = useState("");
   const { useFeature: useSubFeature } = useSubscriptionStore();
 
   const startCookingMode = (step: number) => {
@@ -314,20 +316,77 @@ export default function RecipeDetailPage() {
             {recipe.difficulty === "easy" ? "Einfach" : recipe.difficulty === "medium" ? "Mittel" : recipe.difficulty === "hard" ? "Anspruchsvoll" : recipe.difficulty}
           </span>
         )}
-        {recipe.sourceUrl && (() => {
-          const src = recipe.sourceUrl!;
-          const sourceName = src.includes("fooby.ch") ? "Fooby" : src.includes("bettybossi.ch") ? "Betty Bossi" : src.includes("migusto.migros.ch") ? "Migusto" : src.includes("swissmilk.ch") ? "Swissmilk" : null;
-          const sourceColor = src.includes("fooby.ch") ? "#00A651" : src.includes("bettybossi.ch") ? "#D4145A" : src.includes("migusto.migros.ch") ? "#FF6600" : src.includes("swissmilk.ch") ? "#0077B6" : "#F2894F";
-          return sourceName ? (
-            <a href={src} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, backgroundColor: 'white', fontSize: 12, fontWeight: 700, color: sourceColor, textDecoration: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={sourceColor} strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-              {sourceName}
-            </a>
-          ) : (
-            <a href={src} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, backgroundColor: 'white', fontSize: 12, fontWeight: 600, color: '#F2894F', textDecoration: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
-              Originalrezept
-            </a>
+        {/* Quelle — URL (klickbar) oder manueller Name */}
+        {(() => {
+          const src = recipe.sourceUrl || "";
+          const isUrl = src.startsWith("http");
+          const sourceName = isUrl
+            ? (src.includes("fooby.ch") ? "Fooby" : src.includes("bettybossi.ch") ? "Betty Bossi" : src.includes("migusto.migros.ch") ? "Migusto" : src.includes("swissmilk.ch") ? "Swissmilk" : null)
+            : null;
+          const sourceColor = isUrl
+            ? (src.includes("fooby.ch") ? "#00A651" : src.includes("bettybossi.ch") ? "#D4145A" : src.includes("migusto.migros.ch") ? "#FF6600" : src.includes("swissmilk.ch") ? "#0077B6" : "#F2894F")
+            : "#8C7060";
+
+          // Editing mode — inline input
+          if (editingSource) {
+            return (
+              <form onSubmit={(e) => { e.preventDefault(); const val = sourceInput.trim(); updateRecipe(recipe.id, { sourceUrl: val || undefined }); setEditingSource(false); }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <input
+                  autoFocus
+                  value={sourceInput}
+                  onChange={(e) => setSourceInput(e.target.value)}
+                  placeholder="z.B. Mein Kochbuch"
+                  style={{ padding: '6px 12px', borderRadius: 20, border: '2px solid #F2894F', fontSize: 12, fontWeight: 600, color: '#212022', outline: 'none', width: 160, fontFamily: "'Plus Jakarta Sans', sans-serif", backgroundColor: 'white' }}
+                />
+                <button type="submit" style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#F2894F', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                </button>
+                <button type="button" onClick={() => setEditingSource(false)} style={{ width: 28, height: 28, borderRadius: '50%', backgroundColor: '#F5F0EC', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9193A0" strokeWidth="2.5"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                </button>
+              </form>
+            );
+          }
+
+          // Known URL source (Fooby, Betty Bossi, etc.)
+          if (isUrl && sourceName) {
+            return (
+              <a href={src} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, backgroundColor: 'white', fontSize: 12, fontWeight: 700, color: sourceColor, textDecoration: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={sourceColor} strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                {sourceName}
+              </a>
+            );
+          }
+
+          // Unknown URL source
+          if (isUrl) {
+            return (
+              <a href={src} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, backgroundColor: 'white', fontSize: 12, fontWeight: 600, color: '#F2894F', textDecoration: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                Originalrezept
+              </a>
+            );
+          }
+
+          // Manual source name (not a URL)
+          if (src) {
+            return (
+              <button onClick={() => { setSourceInput(src); setEditingSource(true); }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, backgroundColor: 'white', fontSize: 12, fontWeight: 600, color: sourceColor, border: 'none', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={sourceColor} strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg>
+                {src}
+              </button>
+            );
+          }
+
+          // No source — show "add source" button
+          return (
+            <button onClick={() => { setSourceInput(""); setEditingSource(true); }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, backgroundColor: 'white', fontSize: 12, fontWeight: 500, color: '#C4B8AC', border: '1px dashed #D4C9BF', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C4B8AC" strokeWidth="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg>
+              + Quelle
+            </button>
           );
         })()}
       </div>
