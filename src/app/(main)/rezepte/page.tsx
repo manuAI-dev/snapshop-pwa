@@ -38,9 +38,11 @@ export default function RezeptePage() {
   const [newListName, setNewListName] = useState("");
   const newListInputRef = useRef<HTMLInputElement>(null);
 
-  // List editing
+  // List editing & context menu
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editListName, setEditListName] = useState("");
+  const [menuListId, setMenuListId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     loadRecipes();
@@ -520,25 +522,69 @@ export default function RezeptePage() {
                           <p style={{ fontSize: 13, fontWeight: 600, color: '#212022', fontFamily: "'Plus Jakarta Sans', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
                             {list.name}
                           </p>
-                          {/* Context menu: rename / delete */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (editingListId === list.id) {
-                                setEditingListId(null);
-                              } else {
-                                setEditingListId(list.id);
-                                setEditListName(list.name);
-                              }
-                            }}
-                            style={{
-                              width: 26, height: 26, borderRadius: 6, border: 'none',
-                              backgroundColor: 'transparent', display: 'flex', alignItems: 'center',
-                              justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
-                            }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9193A0" strokeWidth="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-                          </button>
+                          {/* Three-dot menu */}
+                          <div style={{ position: 'relative' }}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMenuListId(menuListId === list.id ? null : list.id);
+                              }}
+                              style={{
+                                width: 26, height: 26, borderRadius: 6, border: 'none',
+                                backgroundColor: menuListId === list.id ? '#F5EDE6' : 'transparent',
+                                display: 'flex', alignItems: 'center',
+                                justifyContent: 'center', cursor: 'pointer', flexShrink: 0,
+                              }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9193A0" strokeWidth="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                            </button>
+                            {/* Dropdown */}
+                            {menuListId === list.id && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  position: 'absolute', top: 30, right: 0,
+                                  backgroundColor: 'white', borderRadius: 12,
+                                  boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
+                                  overflow: 'hidden', zIndex: 60, minWidth: 150,
+                                  border: '1px solid #F0EBE6',
+                                }}
+                              >
+                                <button
+                                  onClick={() => {
+                                    setEditingListId(list.id);
+                                    setEditListName(list.name);
+                                    setMenuListId(null);
+                                  }}
+                                  style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                                    padding: '11px 14px', border: 'none', backgroundColor: 'white',
+                                    cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#212022',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                  }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9193A0" strokeWidth="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                                  Umbenennen
+                                </button>
+                                <div style={{ height: 1, backgroundColor: '#F5EDE6' }} />
+                                <button
+                                  onClick={() => {
+                                    setConfirmDeleteId(list.id);
+                                    setMenuListId(null);
+                                  }}
+                                  style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                                    padding: '11px 14px', border: 'none', backgroundColor: 'white',
+                                    cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#E64949',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                  }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E64949" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                  Löschen
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </>
                       )}
                     </div>
@@ -670,6 +716,59 @@ export default function RezeptePage() {
           </div>
         </>
       )}
+
+      {/* Invisible backdrop to close dropdown menu */}
+      {menuListId && (
+        <div
+          onClick={() => setMenuListId(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 55 }}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {confirmDeleteId && (() => {
+        const listToDelete = lists.find(l => l.id === confirmDeleteId);
+        if (!listToDelete) return null;
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 110, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: 20, padding: 24, maxWidth: 320, width: '100%', boxShadow: '0 8px 30px rgba(0,0,0,0.15)' }}>
+              <h3 style={{ fontSize: 17, fontWeight: 700, color: '#212022', marginBottom: 8, fontFamily: "'Montserrat', sans-serif" }}>
+                Liste löschen?
+              </h3>
+              <p style={{ fontSize: 14, color: '#9193A0', marginBottom: 20, fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1.5 }}>
+                &bdquo;{listToDelete.name}&ldquo; mit {listToDelete.recipeIds.length} {listToDelete.recipeIds.length === 1 ? "Rezept" : "Rezepten"} wird gelöscht. Die Rezepte selbst bleiben erhalten.
+              </p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  style={{
+                    flex: 1, padding: '12px 0', borderRadius: 12,
+                    border: '1.5px solid #E0E0E0', backgroundColor: 'white',
+                    fontWeight: 600, fontSize: 14, cursor: 'pointer', color: '#525154',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={() => {
+                    deleteList(confirmDeleteId);
+                    setConfirmDeleteId(null);
+                  }}
+                  style={{
+                    flex: 1, padding: '12px 0', borderRadius: 12,
+                    backgroundColor: '#E64949', color: 'white',
+                    fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}
+                >
+                  Löschen
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
