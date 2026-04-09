@@ -113,13 +113,13 @@ export function PwaInstallPopup() {
         }}>
           {ios ? (
             <>
-              <Step num={1} text={<>Tippe unten auf das <strong>Teilen-Symbol</strong> <ShareIcon /></>} />
-              <Step num={2} text={<>Scrolle und wähle <strong>&quot;Zum Home-Bildschirm&quot;</strong></>} />
-              <Step num={3} text={<>Tippe auf <strong>&quot;Hinzufügen&quot;</strong> — fertig!</>} />
+              <Step num={1} text={<>Tippe in Safari auf das <strong>Teilen-Symbol</strong> <ShareIcon /> (oben oder unten im Browser)</>} />
+              <Step num={2} text={<>Scrolle nach unten und wähle <strong>&quot;Zum Home-Bildschirm&quot;</strong> <PlusIcon /></>} />
+              <Step num={3} text={<>Tippe oben rechts auf <strong>&quot;Hinzufügen&quot;</strong> — fertig!</>} />
             </>
           ) : (
             <>
-              <Step num={1} text={<>Tippe oben rechts auf <strong>⋮</strong> (Menü)</>} />
+              <Step num={1} text={<>Tippe oben rechts auf <strong>⋮</strong> (drei Punkte)</>} />
               <Step num={2} text={<>Wähle <strong>&quot;Zum Startbildschirm hinzufügen&quot;</strong></>} />
               <Step num={3} text={<>Bestätige mit <strong>&quot;Hinzufügen&quot;</strong> — fertig!</>} />
             </>
@@ -189,7 +189,7 @@ export function PwaInstallBanner() {
           App installieren
         </p>
         <p style={{ fontSize: 11, color: "#9193A0", margin: "2px 0 0" }}>
-          {isIOS() ? "Teilen → Zum Home-Bildschirm" : "Menü → Zum Startbildschirm"}
+          {isIOS() ? "Safari → Teilen → Zum Home-Bildschirm" : "Menü ⋮ → Zum Startbildschirm"}
         </p>
       </div>
       <button
@@ -223,6 +223,19 @@ function Step({ num, text }: { num: number; text: React.ReactNode }) {
       </div>
       <p style={{ fontSize: 13, color: "#525154", margin: 0, lineHeight: 1.4 }}>{text}</p>
     </div>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2894F" strokeWidth="2.5"
+      strokeLinecap="round" strokeLinejoin="round"
+      style={{ display: "inline-block", verticalAlign: "middle", marginLeft: 2 }}
+    >
+      <rect x="3" y="3" width="18" height="18" rx="4" />
+      <path d="M12 8v8" /><path d="M8 12h8" />
+    </svg>
   );
 }
 
