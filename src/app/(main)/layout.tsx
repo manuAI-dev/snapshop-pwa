@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import BottomNav from "@/components/ui/bottom-nav";
 import ScanModal from "@/components/recipe/scan-modal";
 import PaywallModal from "@/components/ui/paywall-modal";
+import { PwaSmartBanner } from "@/components/ui/pwa-install-prompt";
 import { useAuthStore } from "@/stores/auth-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
 import { useRouter } from "next/navigation";
@@ -43,6 +44,7 @@ export default function MainLayout({
 
   return (
     <div className="min-h-screen pb-20" style={{ backgroundColor: '#FFF3EB' }}>
+      <PwaSmartBanner />
       <main className="max-w-lg mx-auto">{children}</main>
       <BottomNav onScanPress={() => setScanOpen(true)} />
       <ScanModal isOpen={scanOpen} onClose={() => setScanOpen(false)} />
