@@ -12,7 +12,7 @@ import { PwaInstallBanner } from "@/components/ui/pwa-install-prompt";
 export default function KontoPage() {
   const { user, logout } = useAuthStore();
   // recipes removed - stats row no longer shown
-  const { household, members, invites, isLoading: hhLoading, loadHousehold, createHousehold, updateHouseholdProfile, inviteByEmail, generateInviteLink, joinByCode, removeMember, leaveHousehold, deleteHousehold, error: hhError, clearError: clearHhError } = useHouseholdStore();
+  const { household, members, invites, isLoading: hhLoading, loadHousehold, createHousehold, updateHouseholdProfile, generateInviteLink, joinByCode, removeMember, leaveHousehold, deleteHousehold, error: hhError, clearError: clearHhError } = useHouseholdStore();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export default function KontoPage() {
   const [showHhInvite, setShowHhInvite] = useState(false);
   const [hhName, setHhName] = useState("Unser Haushalt");
   const [hhJoinCode, setHhJoinCode] = useState("");
-  const [hhInviteEmail, setHhInviteEmail] = useState("");
+  // hhInviteEmail removed — email invite not functional without email service
   const [hhInviteLink, setHhInviteLink] = useState<string | null>(null);
   const [hhActionLoading, setHhActionLoading] = useState(false);
   const [hhSuccess, setHhSuccess] = useState<string | null>(null);
@@ -427,45 +427,89 @@ export default function KontoPage() {
 
       {showHhInvite && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ backgroundColor: '#FFF3EB', borderRadius: '24px 24px 0 0', padding: '32px 24px 40px', width: '100%', maxWidth: 420 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#212022', fontFamily: "'Montserrat', sans-serif", marginBottom: 16, textAlign: 'center' }}>Person einladen</h3>
+          <div style={{ backgroundColor: '#FFF3EB', borderRadius: '24px 24px 0 0', padding: '28px 24px calc(28px + env(safe-area-inset-bottom, 0px))', width: '100%', maxWidth: 420 }}>
+            {/* Handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', margin: '0 auto 18px' }} />
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#212022', fontFamily: "'Montserrat', sans-serif", marginBottom: 6, textAlign: 'center' }}>Haushalt teilen</h3>
+            <p style={{ fontSize: 13, color: '#9193A0', textAlign: 'center', marginBottom: 20 }}>Lade Familie oder Mitbewohner ein.</p>
 
+            {/* Option 1: Link teilen via Share / WhatsApp etc. */}
             <div style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#212022', marginBottom: 8 }}>Code teilen</p>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, backgroundColor: '#F9F6F2', borderRadius: 10 }}>
-                <span style={{ fontSize: 22, fontWeight: 700, color: '#F2894F', letterSpacing: 3, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{household?.inviteCode.toUpperCase()}</span>
-                <button onClick={() => { navigator.clipboard?.writeText(household?.inviteCode.toUpperCase() || ''); setHhSuccess('Kopiert!'); setTimeout(() => setHhSuccess(null), 2000); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#9193A0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Einladungslink</p>
+              <p style={{ fontSize: 13, color: '#525154', marginBottom: 14, lineHeight: 1.5 }}>
+                Teile den Link per WhatsApp, iMessage oder eine andere App. Die Person kann sich registrieren und tritt automatisch bei.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={async () => {
+                    try {
+                      let link = hhInviteLink;
+                      if (!link) {
+                        link = await generateInviteLink();
+                        setHhInviteLink(link);
+                      }
+                      if (navigator.share) {
+                        await navigator.share({
+                          title: `Tritt meinem SnapShop-Haushalt bei`,
+                          text: `Hey! Tritt meinem Haushalt auf SnapShop bei, damit wir Rezepte und Einkaufslisten teilen können.`,
+                          url: link,
+                        });
+                      } else {
+                        await navigator.clipboard?.writeText(link);
+                        setHhSuccess('Link kopiert!');
+                        setTimeout(() => setHhSuccess(null), 2500);
+                      }
+                    } catch (e: any) {
+                      if (e?.name !== 'AbortError') {
+                        // User cancelled share — not an error
+                        setHhSuccess('Fehler beim Teilen');
+                        setTimeout(() => setHhSuccess(null), 2500);
+                      }
+                    }
+                  }}
+                  style={{
+                    flex: 1, padding: '13px 0', borderRadius: 12, border: 'none',
+                    backgroundColor: '#4B164C', color: 'white', fontWeight: 600, fontSize: 14,
+                    cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                  Link teilen
+                </button>
+                {hhInviteLink && (
+                  <button
+                    onClick={() => { navigator.clipboard?.writeText(hhInviteLink); setHhSuccess('Link kopiert!'); setTimeout(() => setHhSuccess(null), 2500); }}
+                    style={{
+                      padding: '13px 16px', borderRadius: 12, border: '1.5px solid #E0D5CA',
+                      backgroundColor: 'white', color: '#525154', fontWeight: 600, fontSize: 13,
+                      cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Kopieren
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Option 2: Code manuell eingeben */}
+            <div style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 20 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#9193A0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Oder: Code manuell teilen</p>
+              <p style={{ fontSize: 13, color: '#525154', marginBottom: 12, lineHeight: 1.5 }}>
+                Die andere Person kann diesen Code unter <strong>Konto → Haushalt beitreten</strong> eingeben.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 14, backgroundColor: '#F9F6F2', borderRadius: 12 }}>
+                <span style={{ fontSize: 24, fontWeight: 700, color: '#F2894F', letterSpacing: 4, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{household?.inviteCode.toUpperCase()}</span>
+                <button onClick={() => { navigator.clipboard?.writeText(household?.inviteCode.toUpperCase() || ''); setHhSuccess('Code kopiert!'); setTimeout(() => setHhSuccess(null), 2500); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F2894F" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 </button>
               </div>
             </div>
 
-            <div style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#212022', marginBottom: 8 }}>Einladungslink</p>
-              {hhInviteLink ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <input readOnly value={hhInviteLink} style={{ flex: 1, padding: '10px 12px', borderRadius: 10, backgroundColor: '#F9F6F2', border: 'none', fontSize: 12, color: '#525154', outline: 'none' }} />
-                  <button onClick={() => { navigator.clipboard?.writeText(hhInviteLink); setHhSuccess('Link kopiert!'); setTimeout(() => setHhSuccess(null), 2000); }}
-                    style={{ padding: '10px 14px', borderRadius: 10, backgroundColor: '#F2894F', color: 'white', fontWeight: 600, fontSize: 12, border: 'none', cursor: 'pointer' }}>Kopieren</button>
-                </div>
-              ) : (
-                <button onClick={async () => { try { const link = await generateInviteLink(); setHhInviteLink(link); } catch {} }}
-                  style={{ width: '100%', padding: 10, borderRadius: 10, backgroundColor: '#F3E5F5', color: '#4B164C', fontWeight: 600, fontSize: 13, border: 'none', cursor: 'pointer' }}>Link generieren</button>
-              )}
-            </div>
-
-            <div style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 20 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#212022', marginBottom: 8 }}>Per E-Mail</p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input type="email" value={hhInviteEmail} onChange={(e) => setHhInviteEmail(e.target.value)} placeholder="partner@email.com"
-                  style={{ flex: 1, padding: '10px 12px', borderRadius: 10, backgroundColor: '#F9F6F2', border: '2px solid transparent', outline: 'none', fontSize: 14, color: '#212022', fontFamily: "'Plus Jakarta Sans', sans-serif" }} />
-                <button disabled={!hhInviteEmail.includes('@')} onClick={async () => { try { await inviteByEmail(hhInviteEmail); setHhInviteEmail(''); setHhSuccess('Gesendet!'); setTimeout(() => setHhSuccess(null), 3000); } catch {} }}
-                  style={{ padding: '10px 16px', borderRadius: 10, backgroundColor: hhInviteEmail.includes('@') ? '#F2894F' : '#E0D5CA', color: 'white', fontWeight: 600, fontSize: 13, border: 'none', cursor: hhInviteEmail.includes('@') ? 'pointer' : 'not-allowed' }}>Senden</button>
-              </div>
-            </div>
-
-            <button onClick={() => { setShowHhInvite(false); setHhInviteLink(null); setHhInviteEmail(''); }}
-              style={{ width: '100%', padding: 14, borderRadius: 12, backgroundColor: 'white', color: '#9193A0', fontWeight: 600, fontSize: 14, border: '1px solid #E0D5CA', cursor: 'pointer' }}>Schliessen</button>
+            <button onClick={() => { setShowHhInvite(false); setHhInviteLink(null); }}
+              style={{ width: '100%', padding: 14, borderRadius: 14, backgroundColor: 'white', color: '#9193A0', fontWeight: 600, fontSize: 14, border: '1.5px solid #E0D5CA', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Schliessen</button>
           </div>
         </div>
       )}
