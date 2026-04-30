@@ -235,32 +235,39 @@ function Section({ title, subtitle, collapsed, onToggle, headerRight, children }
   return (
     <div>
       {/* Section header — visually distinct from items */}
-      <button
-        onClick={onToggle}
+      <div
         style={{
           display: 'flex', alignItems: 'center', width: '100%',
-          padding: '20px 20px 10px', background: 'none', border: 'none',
-          cursor: 'pointer',
+          padding: '20px 20px 10px',
         }}
       >
-        <div style={{ flex: 1, textAlign: 'left' }}>
+        {/* Chevron + Titel — klickbar zum Auf/Zuklappen */}
+        <button
+          onClick={onToggle}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, flex: 1,
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: 0, textAlign: 'left',
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+            fill="none" stroke="#F2894F" strokeWidth="2.5"
+            style={{ flexShrink: 0, transition: 'transform 0.2s', transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
           <span style={{
             fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 700,
             color: '#F2894F', textTransform: 'uppercase', letterSpacing: 1.2,
           }}>{title}</span>
           {subtitle && (
-            <span style={{ fontSize: 11, color: '#9193A0', marginLeft: 8, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>{subtitle}</span>
+            <span style={{ fontSize: 11, color: '#9193A0', marginLeft: 4, fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>{subtitle}</span>
           )}
-        </div>
-        {headerRight && <div style={{ marginRight: 8 }}>{headerRight}</div>}
-        <svg
-          xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-          fill="none" stroke="#F2894F" strokeWidth="2.5"
-          style={{ flexShrink: 0, transition: 'transform 0.2s', transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </button>
+        </button>
+        {/* Aktionen rechts — NICHT klickbar zum Aufklappen */}
+        {headerRight && <div>{headerRight}</div>}
+      </div>
 
       {/* Items */}
       {!collapsed && (
