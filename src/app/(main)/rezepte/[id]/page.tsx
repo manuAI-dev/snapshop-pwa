@@ -13,7 +13,7 @@ import { Recipe, Ingredient, getTotalTime, NutritionInfo } from "@/types";
 export default function RecipeDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { recipes, currentRecipe, deleteRecipe, updateRecipe, loadRecipes } = useRecipeStore();
+  const { recipes, currentRecipe, deleteRecipe, updateRecipe, loadRecipes, loadRecipeDetail, _hydrated } = useRecipeStore();
   const { addRecipe: addToShopping } = useShoppingStore();
   const { addMeal } = usePlannerStore();
   const { user } = useAuthStore();
@@ -61,8 +61,8 @@ export default function RecipeDetailPage() {
   };
 
   useEffect(() => {
-    if (recipes.length === 0) loadRecipes();
-  }, [recipes.length, loadRecipes]);
+    if (_hydrated && recipes.length === 0) loadRecipes();
+  }, [_hydrated, recipes.length, loadRecipes]);
 
   const recipe: Recipe | undefined =
     recipes.find((r) => r.id === params.id) ||
@@ -75,6 +75,14 @@ export default function RecipeDetailPage() {
       setIsFavorite(recipe.isFavorite || false);
     }
   }, [recipe, servings]);
+
+  // Volle Rezeptdaten nachladen (Ingredients, Instructions, Bilder)
+  // In loadRecipes werden nur Listendaten geladen für Performance
+  useEffect(() => {
+    if (recipe?.id && (recipe.ingredients.length === 0 || recipe.recipeImages.length === 0)) {
+      loadRecipeDetail(recipe.id);
+    }
+  }, [recipe?.id, loadRecipeDetail]);
 
   if (!recipe) {
     return (

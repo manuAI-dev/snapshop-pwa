@@ -62,12 +62,16 @@ export default function UpgradePage() {
   const handleManageSubscription = async () => {
     try {
       const customerId = await getStripeCustomerId();
-      if (!customerId) return;
+      const { user } = useAuthStore.getState();
 
       const res = await fetch("/api/stripe/portal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId }),
+        body: JSON.stringify({
+          customerId,
+          email: user?.email,
+          userId: user?.id,
+        }),
       });
       const data = await res.json();
       if (data.url) {

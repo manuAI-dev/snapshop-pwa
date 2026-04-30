@@ -49,6 +49,7 @@ export interface Recipe {
   isFavorite?: boolean;
   nutrition?: NutritionInfo;
   recipeImages: string[];
+  thumbnail?: string;    // Kleines Vorschaubild (~5-10KB) für Listenansicht
   sourceUrl?: string;    // URL des Originalrezepts (z.B. fooby.ch Link)
   userId?: string;
   createdAt?: string;

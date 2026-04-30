@@ -7,6 +7,7 @@ import { useRecipeListStore } from "@/stores/recipe-list-store";
 import { Recipe, getTotalTime } from "@/types";
 import AppHeader from "@/components/ui/app-header";
 import { PwaInstallPopup } from "@/components/ui/pwa-install-prompt";
+import { LazyRecipeImage } from "@/components/ui/lazy-recipe-image";
 
 type SortMode = "neuste" | "aelteste";
 type FilterTag = "likes" | "stars" | "online" | "buch" | "fooby" | "bettybossi" | "migusto" | "swissmilk" | "eigene";
@@ -23,7 +24,7 @@ function getSourceFromUrl(url?: string): { id: string; name: string; color: stri
 }
 
 export default function RezeptePage() {
-  const { recipes, isLoading, loadRecipes, updateRecipe } = useRecipeStore();
+  const { recipes, isLoading, loadRecipes, updateRecipe, _hydrated } = useRecipeStore();
   const { lists, createList, deleteList, renameList } = useRecipeListStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -44,9 +45,25 @@ export default function RezeptePage() {
   const [menuListId, setMenuListId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // WICHTIG: Erst nach Hydration laden → gecachte Rezepte werden sofort angezeigt,
+  // loadRecipes läuft dann im Hintergrund für frische Daten
+  const [debugInfo, setDebugInfo] = useState("init");
+  const mountTime = useRef(Date.now());
+
   useEffect(() => {
-    loadRecipes();
-  }, [loadRecipes]);
+    setDebugInfo(`hydrated=${_hydrated} recipes=${recipes.length} loading=${isLoading} t=${Date.now() - mountTime.current}ms`);
+    if (_hydrated) {
+      const t0 = Date.now();
+      loadRecipes();
+      // Track when recipes arrive
+      const interval = setInterval(() => {
+        const r = useRecipeStore.getState();
+        setDebugInfo(`h=true r=${r.recipes.length} thumbs=${r.recipes.filter(x => x.thumbnail).length} load=${r.isLoading} t=${Date.now() - t0}ms`);
+        if (!r.isLoading && r.recipes.length > 0) clearInterval(interval);
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [_hydrated, loadRecipes]);
 
   useEffect(() => {
     if (showNewListSheet && newListInputRef.current) {
@@ -103,6 +120,10 @@ export default function RezeptePage() {
 
   return (
     <div style={{ backgroundColor: '#FFF3EB', minHeight: '100vh', paddingBottom: 90 }}>
+      {/* DEBUG — nach Fix entfernen */}
+      <div style={{ position: 'fixed', bottom: 100, left: 8, right: 8, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.85)', color: '#0f0', fontSize: 11, padding: '6px 10px', borderRadius: 8, fontFamily: 'monospace', pointerEvents: 'none' }}>
+        {debugInfo}
+      </div>
       {/* PWA Install Popup */}
       <PwaInstallPopup />
 
@@ -345,10 +366,12 @@ export default function RezeptePage() {
                     onClick={() => router.push(`/rezepte/${recipe.id}`)}
                     style={{ position: 'relative', borderRadius: 20, overflow: 'hidden', height: 200, cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                   >
-                    {recipe.recipeImages?.[0] ? (
-                      <img src={recipe.recipeImages[0]} alt={recipe.dishName} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    {recipe.thumbnail ? (
+                      <img src={recipe.thumbnail} alt={recipe.dishName} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
-                      <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #F2894F 0%, #CC3D10 100%)' }} />
+                      <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #F2894F 0%, #CC3D10 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                      </div>
                     )}
                     <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 40%, transparent 60%)' }} />
 
@@ -438,7 +461,7 @@ export default function RezeptePage() {
                 const count = list.recipeIds.length;
                 // Get up to 4 recipe images for mosaic thumbnail
                 const thumbRecipes = list.recipeIds.slice(0, 4).map(rid => recipes.find(r => r.id === rid));
-                const images = thumbRecipes.map(r => r?.recipeImages?.[0]).filter(Boolean) as string[];
+                const images = thumbRecipes.map(r => r?.thumbnail || r?.recipeImages?.[0]).filter(Boolean) as string[];
                 const isEditing = editingListId === list.id;
 
                 return (

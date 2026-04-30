@@ -1,9 +1,11 @@
 "use client";
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { Recipe, Ingredient } from "@/types";
 import { supabase } from "@/lib/supabase";
 import { generateId, getUserHouseholdId } from "@/lib/utils";
+import { generateThumbnail } from "@/utils/compress-image";
 
 interface RecipeStore {
   recipes: Recipe[];
@@ -11,9 +13,12 @@ interface RecipeStore {
   isLoading: boolean;
   isGenerating: boolean;
   error: string | null;
+  _hydrated: boolean;
 
   loadRecipes: () => void;
   setCurrentRecipe: (recipe: Recipe | null) => void;
+  loadRecipeImages: (recipeId: string) => Promise<string[]>;
+  loadRecipeDetail: (recipeId: string) => Promise<void>;
   saveRecipe: (recipe: Recipe) => Recipe;
   updateRecipe: (recipeId: string, updates: Partial<Recipe>) => void;
   deleteRecipe: (recipeId: string) => void;
@@ -48,6 +53,7 @@ function dbToRecipe(row: any, ingredients: any[]): Recipe {
     isFavorite: row.is_favorite || false,
     nutrition: row.nutrition || undefined,
     recipeImages: row.recipe_images || [],
+    thumbnail: row.thumbnail || undefined,
     sourceUrl: row.source_url || undefined,
     userId: row.user_id,
     createdAt: row.created_at,
@@ -74,6 +80,30 @@ function recipeToDB(recipe: Recipe) {
   };
 }
 
+// Helper: Convert DB row to Recipe type (MINIMAL — nur für Listenansicht)
+function dbToRecipeLight(row: any): Recipe {
+  return {
+    id: row.id,
+    dishName: row.dish_name,
+    cuisine: row.cuisine || "",
+    description: row.description || "",
+    ingredients: [],          // Nicht in Liste benötigt
+    instructions: [],         // Nicht in Liste benötigt
+    servings: row.servings || 4,
+    prepTime: row.prep_time || 0,
+    cookTime: row.cook_time || 0,
+    difficulty: row.difficulty || "medium",
+    rating: row.rating || undefined,
+    isFavorite: row.is_favorite || false,
+    recipeImages: [],         // Nicht in Liste benötigt — Thumbnail reicht
+    thumbnail: row.thumbnail || undefined,
+    sourceUrl: row.source_url || undefined,
+    userId: row.user_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 // Helper: Convert Ingredient to DB format
 function ingredientToDB(ing: Ingredient, recipeId: string) {
   return {
@@ -88,49 +118,148 @@ function ingredientToDB(ing: Ingredient, recipeId: string) {
   };
 }
 
-export const useRecipeStore = create<RecipeStore>((set, get) => ({
+export const useRecipeStore = create<RecipeStore>()(
+  persist(
+    (set, get) => ({
   recipes: [],
   currentRecipe: null,
   isLoading: false,
   isGenerating: false,
   error: null,
+  _hydrated: false,
 
   loadRecipes: async () => {
-    set({ isLoading: true, error: null });
+    // Cache da? → kein Spinner, stilles Refresh im Hintergrund
+    const hasCached = get().recipes.length > 0;
+    if (!hasCached) {
+      set({ isLoading: true, error: null });
+    }
+
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
+      // getSession() = lokal (0ms) vs getUser() = Netzwerk (1-2s)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         set({ recipes: [], isLoading: false });
         return;
       }
 
-      // RLS Policy zeigt automatisch eigene + Haushalt-Rezepte
+      // Schlanker Query: nur Listenfelder, KEIN ingredients-JOIN, KEINE Bilder
       const { data: recipes, error } = await supabase
         .from("recipes")
-        .select("*")
+        .select(`
+          id, dish_name, cuisine, description, servings,
+          prep_time, cook_time, difficulty, rating, is_favorite,
+          thumbnail, source_url, user_id, created_at, updated_at
+        `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // Fetch ingredients for each recipe
-      const recipesWithIngredients: Recipe[] = [];
-      for (const row of recipes || []) {
-        const { data: ingredients } = await supabase
-          .from("ingredients")
-          .select("*")
-          .eq("recipe_id", row.id);
-        recipesWithIngredients.push(dbToRecipe(row, ingredients || []));
-      }
+      const recipeList: Recipe[] = (recipes || []).map(dbToRecipeLight);
+      set({ recipes: recipeList, isLoading: false });
 
-      set({ recipes: recipesWithIngredients, isLoading: false });
+      // Thumbnails im Hintergrund generieren für Rezepte ohne Thumbnail
+      const missing = recipeList.filter(r => r.id && !r.thumbnail);
+      if (missing.length > 0) {
+        // Einzeln laden: 1 Bild-Query → Canvas-Thumbnail → API-Save
+        (async () => {
+          for (const recipe of missing) {
+            try {
+              // Nur das erste Bild dieses einen Rezepts laden
+              const { data } = await supabase
+                .from("recipes")
+                .select("recipe_images")
+                .eq("id", recipe.id!)
+                .single();
+
+              const firstImg = data?.recipe_images?.[0];
+              if (!firstImg) continue;
+
+              // Client-seitig verkleinern (Canvas API)
+              const thumb = await generateThumbnail(firstImg, 150, 0.3);
+
+              // Sofort im UI zeigen
+              set((state) => ({
+                recipes: state.recipes.map(r =>
+                  r.id === recipe.id ? { ...r, thumbnail: thumb } : r
+                ),
+              }));
+
+              // Via API-Route in DB speichern (nutzt service_role_key, kein RLS-Problem)
+              fetch("/api/recipe/generate-thumbnails", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ recipeId: recipe.id, thumbnail: thumb }),
+              }).catch(() => {});
+            } catch {
+              // Weiter mit nächstem
+            }
+          }
+        })();
+      }
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
     }
   },
 
   setCurrentRecipe: (recipe) => set({ currentRecipe: recipe }),
+
+  // Bilder nachladen für ein einzelnes Rezept
+  loadRecipeImages: async (recipeId: string) => {
+    try {
+      const { data } = await supabase
+        .from("recipes")
+        .select("recipe_images")
+        .eq("id", recipeId)
+        .single();
+
+      if (data?.recipe_images?.length) {
+        set((state) => ({
+          recipes: state.recipes.map((r) =>
+            r.id === recipeId ? { ...r, recipeImages: data.recipe_images } : r
+          ),
+          currentRecipe: state.currentRecipe?.id === recipeId
+            ? { ...state.currentRecipe, recipeImages: data.recipe_images }
+            : state.currentRecipe,
+        }));
+        return data.recipe_images as string[];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  // ALLE Detaildaten nachladen (ingredients, instructions, images, nutrition)
+  // Wird aufgerufen wenn Detailseite geöffnet wird
+  loadRecipeDetail: async (recipeId: string) => {
+    try {
+      const { data: row } = await supabase
+        .from("recipes")
+        .select(`
+          id, dish_name, cuisine, description, instructions, servings,
+          prep_time, cook_time, difficulty, rating, is_favorite,
+          nutrition, thumbnail, source_url, recipe_images,
+          user_id, household_id, created_at, updated_at,
+          ingredients(*)
+        `)
+        .eq("id", recipeId)
+        .single();
+
+      if (!row) return;
+
+      const fullRecipe = dbToRecipe(row, row.ingredients || []);
+
+      set((state) => ({
+        recipes: state.recipes.map((r) =>
+          r.id === recipeId ? fullRecipe : r
+        ),
+        currentRecipe: fullRecipe,
+      }));
+    } catch {
+      // Silent fail — Listenversion bleibt erhalten
+    }
+  },
 
   saveRecipe: (recipe) => {
     // This is a sync method, but we need async behavior
@@ -149,9 +278,18 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
 
         const dbRecipe = recipeToDB(recipe);
         const householdId = await getUserHouseholdId();
+
+        // Thumbnail generieren aus dem ersten Bild (klein, ~5-10KB)
+        let thumbnail: string | null = null;
+        if (recipe.recipeImages?.[0]) {
+          try {
+            thumbnail = await generateThumbnail(recipe.recipeImages[0], 200, 0.4);
+          } catch { /* Silent fail */ }
+        }
+
         const { data: insertedRecipe, error: recipeError } = await supabase
           .from("recipes")
-          .insert([{ ...dbRecipe, id, user_id: user.id, household_id: householdId }])
+          .insert([{ ...dbRecipe, id, user_id: user.id, household_id: householdId, thumbnail }])
           .select()
           .single();
 
@@ -197,6 +335,14 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
         if (!user) throw new Error("Not authenticated");
 
         const dbUpdates = recipeToDB({ ...updates } as Recipe);
+
+        // Thumbnail aktualisieren wenn Bilder geändert werden
+        if (updates.recipeImages?.[0]) {
+          try {
+            (dbUpdates as any).thumbnail = await generateThumbnail(updates.recipeImages[0], 200, 0.4);
+          } catch { /* Silent fail */ }
+        }
+
         const { data: updatedRecipe, error: updateError } = await supabase
           .from("recipes")
           .update(dbUpdates)
@@ -505,4 +651,24 @@ export const useRecipeStore = create<RecipeStore>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
-}));
+    }),
+    {
+      name: "snapshop-recipes",
+      // Nur die Listenfelder cachen — keine Bilder, keine schweren Daten
+      partialize: (state) => ({
+        recipes: state.recipes.map((r) => ({
+          ...r,
+          recipeImages: [],
+          ingredients: [],
+          instructions: [],
+        })),
+      }),
+      onRehydrateStorage: () => {
+        return (state) => {
+          // Persist hat aus localStorage geladen → _hydrated = true
+          useRecipeStore.setState({ _hydrated: true });
+        };
+      },
+    }
+  )
+);

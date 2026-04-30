@@ -68,7 +68,7 @@ export default function KalenderPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { slots, loadSlots, addMeal, removeMeal, moveMeal, getDayPlans, isGenerating, generateError, generateAndApply } = usePlannerStore();
-  const { recipes, loadRecipes } = useRecipeStore();
+  const { recipes, loadRecipes, _hydrated } = useRecipeStore();
   const { household, loadHousehold } = useHouseholdStore();
   const [startDate, setStartDate] = useState(getToday);
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -96,7 +96,7 @@ export default function KalenderPage() {
   const isDragging = useRef(false);
   const dayColumnRefs = useRef<Map<string, DOMRect>>(new Map());
 
-  useEffect(() => { loadSlots(); loadRecipes(); loadHousehold(); }, [loadSlots, loadRecipes, loadHousehold]);
+  useEffect(() => { loadSlots(); if (_hydrated) loadRecipes(); loadHousehold(); }, [loadSlots, _hydrated, loadRecipes, loadHousehold]);
 
   // Auto-set kidFriendly from profile
   useEffect(() => {

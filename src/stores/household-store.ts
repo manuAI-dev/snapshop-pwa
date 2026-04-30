@@ -112,13 +112,27 @@ export const useHouseholdStore = create<HouseholdStore>((set, get) => ({
       const household = dbToHousehold(householdRow);
 
       // Mitglieder laden (mit Profil-Daten)
-      const { data: memberRows } = await supabase
+      let memberRows: any[] = [];
+      const { data: mWithProfiles, error: mErr } = await supabase
         .from("household_members")
         .select("*, profiles(name, email, profile_image)")
         .eq("household_id", household.id)
         .order("joined_at", { ascending: true });
 
-      const members = (memberRows || []).map(dbToMember);
+      if (!mErr && mWithProfiles) {
+        memberRows = mWithProfiles;
+      } else {
+        // Fallback: Mitglieder ohne Profil-Join laden
+        console.warn("[loadHousehold] Profile join failed, loading without profiles:", mErr);
+        const { data: mBasic } = await supabase
+          .from("household_members")
+          .select("*")
+          .eq("household_id", household.id)
+          .order("joined_at", { ascending: true });
+        memberRows = mBasic || [];
+      }
+
+      const members = memberRows.map(dbToMember);
 
       // Einladungen laden (nur pending)
       const { data: inviteRows } = await supabase
@@ -317,7 +331,6 @@ export const useHouseholdStore = create<HouseholdStore>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Nicht angemeldet");
 
-      // Prüfe ob User bereits in einem Haushalt ist
       if (get().household) throw new Error("Du bist bereits in einem Haushalt. Verlasse zuerst deinen aktuellen Haushalt.");
 
       // Haushalt über Code finden
@@ -346,12 +359,13 @@ export const useHouseholdStore = create<HouseholdStore>((set, get) => ({
       }
 
       // Bestehende Daten zuordnen
-      await supabase.rpc("assign_user_data_to_household", {
-        p_user_id: user.id,
-        p_household_id: householdRow.id,
-      });
+      try {
+        await supabase.rpc("assign_user_data_to_household", {
+          p_user_id: user.id,
+          p_household_id: householdRow.id,
+        });
+      } catch {} // Nicht kritisch
 
-      // Neu laden
       await get().loadHousehold();
       set({ isLoading: false });
     } catch (err: any) {
@@ -407,10 +421,12 @@ export const useHouseholdStore = create<HouseholdStore>((set, get) => ({
         .eq("id", inviteRow.id);
 
       // Bestehende Daten zuordnen
-      await supabase.rpc("assign_user_data_to_household", {
-        p_user_id: user.id,
-        p_household_id: inviteRow.household_id,
-      });
+      try {
+        await supabase.rpc("assign_user_data_to_household", {
+          p_user_id: user.id,
+          p_household_id: inviteRow.household_id,
+        });
+      } catch {} // Nicht kritisch
 
       await get().loadHousehold();
       set({ isLoading: false });
