@@ -155,8 +155,8 @@ export const useRecipeStore = create<RecipeStore>()(
       const recipeList: Recipe[] = (recipes || []).map(dbToRecipeLight);
       set({ recipes: recipeList, isLoading: false });
 
-      // Einmaliger Reset: alte unscharfe Thumbnails löschen (v3 = 800px/0.7 quality)
-      const THUMB_VERSION = "v3";
+      // Einmaliger Reset: Thumbnails neu generieren (v4 = URL-safe + CORS fix)
+      const THUMB_VERSION = "v4";
       if (typeof window !== "undefined" && !localStorage.getItem(`thumb-${THUMB_VERSION}`)) {
         localStorage.setItem(`thumb-${THUMB_VERSION}`, "1");
         // Zustand persist cache leeren → keine alten unscharfen Thumbnails mehr
@@ -175,11 +175,9 @@ export const useRecipeStore = create<RecipeStore>()(
       // Thumbnails im Hintergrund generieren für Rezepte ohne Thumbnail
       const missing = recipeList.filter(r => r.id && !r.thumbnail);
       if (missing.length > 0) {
-        // Einzeln laden: 1 Bild-Query → Canvas-Thumbnail → API-Save
         (async () => {
           for (const recipe of missing) {
             try {
-              // Nur das erste Bild dieses einen Rezepts laden
               const { data } = await supabase
                 .from("recipes")
                 .select("recipe_images")
@@ -189,8 +187,16 @@ export const useRecipeStore = create<RecipeStore>()(
               const firstImg = data?.recipe_images?.[0];
               if (!firstImg) continue;
 
-              // Client-seitig verkleinern (Canvas API)
-              const thumb = await generateThumbnail(firstImg, 800, 0.7);
+              let thumb: string;
+
+              // URL-Bilder (z.B. von Fooby/Betty Bossi) können nicht via Canvas
+              // verkleinert werden (CORS). Direkt als Thumbnail verwenden.
+              if (firstImg.startsWith("http")) {
+                thumb = firstImg;
+              } else {
+                // Base64-Bilder via Canvas verkleinern
+                thumb = await generateThumbnail(firstImg, 800, 0.7);
+              }
 
               // Sofort im UI zeigen
               set((state) => ({
@@ -199,7 +205,7 @@ export const useRecipeStore = create<RecipeStore>()(
                 ),
               }));
 
-              // Via API-Route in DB speichern (nutzt service_role_key, kein RLS-Problem)
+              // In DB speichern
               fetch("/api/recipe/generate-thumbnails", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -293,11 +299,12 @@ export const useRecipeStore = create<RecipeStore>()(
         const dbRecipe = recipeToDB(recipe);
         const householdId = await getUserHouseholdId();
 
-        // Thumbnail generieren aus dem ersten Bild (klein, ~5-10KB)
+        // Thumbnail generieren/setzen
         let thumbnail: string | null = null;
         if (recipe.recipeImages?.[0]) {
           try {
-            thumbnail = await generateThumbnail(recipe.recipeImages[0], 800, 0.7);
+            const img = recipe.recipeImages[0];
+            thumbnail = img.startsWith("http") ? img : await generateThumbnail(img, 800, 0.7);
           } catch { /* Silent fail */ }
         }
 
@@ -353,7 +360,8 @@ export const useRecipeStore = create<RecipeStore>()(
         // Thumbnail aktualisieren wenn Bilder geändert werden
         if (updates.recipeImages?.[0]) {
           try {
-            (dbUpdates as any).thumbnail = await generateThumbnail(updates.recipeImages[0], 800, 0.7);
+            const img = updates.recipeImages[0];
+            (dbUpdates as any).thumbnail = img.startsWith("http") ? img : await generateThumbnail(img, 800, 0.7);
           } catch { /* Silent fail */ }
         }
 
@@ -402,34 +410,29 @@ export const useRecipeStore = create<RecipeStore>()(
   },
 
   deleteRecipe: (recipeId) => {
-    set({ isLoading: true, error: null });
+    // Optimistic Delete: sofort aus dem UI entfernen
+    set((state) => ({
+      recipes: state.recipes.filter((r) => r.id !== recipeId),
+      currentRecipe: state.currentRecipe?.id === recipeId ? null : state.currentRecipe,
+    }));
 
+    // DB-Delete im Hintergrund
     (async () => {
       try {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) throw new Error("Not authenticated");
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.user) return;
 
-        // Delete ingredients (cascade should handle this, but be explicit)
         await supabase.from("ingredients").delete().eq("recipe_id", recipeId);
 
-        // Delete recipe
-        const { error: deleteError } = await supabase
+        await supabase
           .from("recipes")
           .delete()
           .eq("id", recipeId)
-          .eq("user_id", user.id);
-
-        if (deleteError) throw deleteError;
-
-        set((state) => ({
-          recipes: state.recipes.filter((r) => r.id !== recipeId),
-          currentRecipe: state.currentRecipe?.id === recipeId ? null : state.currentRecipe,
-          isLoading: false,
-        }));
-      } catch (err: any) {
-        set({ error: err.message, isLoading: false });
+          .eq("user_id", session.user.id);
+      } catch {
+        // Silent — Rezept ist bereits aus dem UI entfernt
       }
     })();
   },
