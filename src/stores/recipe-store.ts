@@ -155,11 +155,13 @@ export const useRecipeStore = create<RecipeStore>()(
       const recipeList: Recipe[] = (recipes || []).map(dbToRecipeLight);
       set({ recipes: recipeList, isLoading: false });
 
-      // Einmaliger Reset: alte unscharfe Thumbnails löschen (v2 upgrade)
-      const THUMB_VERSION = "v2";
+      // Einmaliger Reset: alte unscharfe Thumbnails löschen (v3 = 800px/0.7 quality)
+      const THUMB_VERSION = "v3";
       if (typeof window !== "undefined" && !localStorage.getItem(`thumb-${THUMB_VERSION}`)) {
         localStorage.setItem(`thumb-${THUMB_VERSION}`, "1");
-        // Alle Thumbnails zurücksetzen → werden unten neu generiert
+        // Zustand persist cache leeren → keine alten unscharfen Thumbnails mehr
+        localStorage.removeItem("snapshop-recipes");
+        // Alle Thumbnails in DB zurücksetzen → werden unten neu generiert
         fetch("/api/recipe/generate-thumbnails", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -188,7 +190,7 @@ export const useRecipeStore = create<RecipeStore>()(
               if (!firstImg) continue;
 
               // Client-seitig verkleinern (Canvas API)
-              const thumb = await generateThumbnail(firstImg, 400, 0.6);
+              const thumb = await generateThumbnail(firstImg, 800, 0.7);
 
               // Sofort im UI zeigen
               set((state) => ({
@@ -295,7 +297,7 @@ export const useRecipeStore = create<RecipeStore>()(
         let thumbnail: string | null = null;
         if (recipe.recipeImages?.[0]) {
           try {
-            thumbnail = await generateThumbnail(recipe.recipeImages[0], 400, 0.6);
+            thumbnail = await generateThumbnail(recipe.recipeImages[0], 800, 0.7);
           } catch { /* Silent fail */ }
         }
 
@@ -351,7 +353,7 @@ export const useRecipeStore = create<RecipeStore>()(
         // Thumbnail aktualisieren wenn Bilder geändert werden
         if (updates.recipeImages?.[0]) {
           try {
-            (dbUpdates as any).thumbnail = await generateThumbnail(updates.recipeImages[0], 400, 0.6);
+            (dbUpdates as any).thumbnail = await generateThumbnail(updates.recipeImages[0], 800, 0.7);
           } catch { /* Silent fail */ }
         }
 
