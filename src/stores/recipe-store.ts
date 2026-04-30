@@ -155,6 +155,21 @@ export const useRecipeStore = create<RecipeStore>()(
       const recipeList: Recipe[] = (recipes || []).map(dbToRecipeLight);
       set({ recipes: recipeList, isLoading: false });
 
+      // Einmaliger Reset: alte unscharfe Thumbnails löschen (v2 upgrade)
+      const THUMB_VERSION = "v2";
+      if (typeof window !== "undefined" && !localStorage.getItem(`thumb-${THUMB_VERSION}`)) {
+        localStorage.setItem(`thumb-${THUMB_VERSION}`, "1");
+        // Alle Thumbnails zurücksetzen → werden unten neu generiert
+        fetch("/api/recipe/generate-thumbnails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resetAll: true, userId: session?.user?.id }),
+        }).catch(() => {});
+        // Alle Rezepte als "ohne Thumbnail" markieren für Neugenerierung
+        recipeList.forEach(r => { r.thumbnail = undefined; });
+        set({ recipes: [...recipeList] });
+      }
+
       // Thumbnails im Hintergrund generieren für Rezepte ohne Thumbnail
       const missing = recipeList.filter(r => r.id && !r.thumbnail);
       if (missing.length > 0) {
@@ -173,7 +188,7 @@ export const useRecipeStore = create<RecipeStore>()(
               if (!firstImg) continue;
 
               // Client-seitig verkleinern (Canvas API)
-              const thumb = await generateThumbnail(firstImg, 150, 0.3);
+              const thumb = await generateThumbnail(firstImg, 400, 0.6);
 
               // Sofort im UI zeigen
               set((state) => ({
@@ -280,7 +295,7 @@ export const useRecipeStore = create<RecipeStore>()(
         let thumbnail: string | null = null;
         if (recipe.recipeImages?.[0]) {
           try {
-            thumbnail = await generateThumbnail(recipe.recipeImages[0], 200, 0.4);
+            thumbnail = await generateThumbnail(recipe.recipeImages[0], 400, 0.6);
           } catch { /* Silent fail */ }
         }
 
@@ -336,7 +351,7 @@ export const useRecipeStore = create<RecipeStore>()(
         // Thumbnail aktualisieren wenn Bilder geändert werden
         if (updates.recipeImages?.[0]) {
           try {
-            (dbUpdates as any).thumbnail = await generateThumbnail(updates.recipeImages[0], 200, 0.4);
+            (dbUpdates as any).thumbnail = await generateThumbnail(updates.recipeImages[0], 400, 0.6);
           } catch { /* Silent fail */ }
         }
 

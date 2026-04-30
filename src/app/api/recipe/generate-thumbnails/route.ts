@@ -8,7 +8,17 @@ const supabaseAdmin = createClient(
 
 // POST: Client schickt generiertes Thumbnail, Server speichert es
 export async function POST(req: NextRequest) {
-  const { recipeId, thumbnail } = await req.json();
+  const { recipeId, thumbnail, resetAll, userId } = await req.json();
+
+  // Reset alle Thumbnails eines Users → werden beim nächsten Load neu generiert
+  if (resetAll && userId) {
+    const { error } = await supabaseAdmin
+      .from("recipes")
+      .update({ thumbnail: null })
+      .eq("user_id", userId);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ reset: true });
+  }
 
   if (!recipeId || !thumbnail) {
     return NextResponse.json({ error: "recipeId and thumbnail required" }, { status: 400 });
