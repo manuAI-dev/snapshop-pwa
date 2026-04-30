@@ -45,19 +45,8 @@ export default function RezeptePage() {
   const [menuListId, setMenuListId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  // DEBUG
-  const [debugInfo, setDebugInfo] = useState("init");
-  const mountTime = useRef(Date.now());
-
   useEffect(() => {
-    const t0 = Date.now();
     loadRecipes();
-    const interval = setInterval(() => {
-      const r = useRecipeStore.getState();
-      setDebugInfo(`r=${r.recipes.length} thumbs=${r.recipes.filter(x => x.thumbnail).length} load=${r.isLoading} t=${Date.now() - t0}ms`);
-      if (!r.isLoading && r.recipes.length > 0) clearInterval(interval);
-    }, 200);
-    return () => clearInterval(interval);
   }, [loadRecipes]);
 
   useEffect(() => {
@@ -115,10 +104,6 @@ export default function RezeptePage() {
 
   return (
     <div style={{ backgroundColor: '#FFF3EB', minHeight: '100vh', paddingBottom: 90 }}>
-      {/* DEBUG — nach Fix entfernen */}
-      <div style={{ position: 'fixed', bottom: 100, left: 8, right: 8, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.85)', color: '#0f0', fontSize: 11, padding: '6px 10px', borderRadius: 8, fontFamily: 'monospace', pointerEvents: 'none' }}>
-        {debugInfo}
-      </div>
       {/* PWA Install Popup */}
       <PwaInstallPopup />
 

@@ -9,7 +9,7 @@ import AppHeader from "@/components/ui/app-header";
 type ViewMode = "kategorie" | "rezepte";
 
 export default function EinkaufslistePage() {
-  const { items, categories, recipeGroups, checkedItems, customItems, isLoading, loadShoppingList, toggleItem, updateItem, deleteItem, addCustomItem, clearList, removeRecipeBatch } = useShoppingStore();
+  const { items, categories, recipeGroups, checkedItems, customItems, isLoading, loadShoppingList, toggleItem, updateItem, deleteItem, addCustomItem, clearList, removeRecipeBatch, removeAllRecipeItems, addRecipeBatch } = useShoppingStore();
   const { user } = useAuthStore();
   const [viewMode, setViewMode] = useState<ViewMode>("kategorie");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -90,28 +90,80 @@ export default function EinkaufslistePage() {
               return (
                 <Section
                   key={group.recipeId}
-                  title={group.batchCount > 1 ? `${group.recipeName} (${group.batchCount}×)` : group.recipeName}
+                  title={group.recipeName}
                   subtitle={`${group.items.length} Zutaten`}
                   collapsed={collapsed}
                   onToggle={() => toggleSection(`recipe-${group.recipeId}`)}
-                  headerRight={group.batchCount > 1 ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`1× "${group.recipeName}" aus der Liste entfernen?`)) {
-                          removeRecipeBatch(group.recipeId);
-                        }
-                      }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        background: '#FDE8E0', border: 'none', borderRadius: 8,
-                        padding: '4px 10px', cursor: 'pointer', flexShrink: 0,
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2894F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/></svg>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#F2894F', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>1×</span>
-                    </button>
-                  ) : undefined}
+                  headerRight={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {/* Stepper: -1 / count / +1 */}
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 0,
+                        backgroundColor: '#FDE8E0', borderRadius: 10,
+                        overflow: 'hidden',
+                      }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (group.batchCount <= 1) {
+                              if (confirm(`"${group.recipeName}" aus der Einkaufsliste entfernen?`)) {
+                                removeAllRecipeItems(group.recipeId);
+                              }
+                            } else {
+                              removeRecipeBatch(group.recipeId);
+                            }
+                          }}
+                          style={{
+                            width: 32, height: 32, border: 'none', backgroundColor: 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', padding: 0,
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2894F" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14"/></svg>
+                        </button>
+                        <span style={{
+                          fontSize: 14, fontWeight: 700, color: '#F2894F',
+                          fontFamily: "'Plus Jakarta Sans', sans-serif",
+                          minWidth: 24, textAlign: 'center',
+                        }}>
+                          {group.batchCount}×
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addRecipeBatch(group.recipeId);
+                          }}
+                          style={{
+                            width: 32, height: 32, border: 'none', backgroundColor: 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', padding: 0,
+                          }}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2894F" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        </button>
+                      </div>
+
+                      {/* Trash: ganzes Rezept löschen */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`"${group.recipeName}" komplett aus der Einkaufsliste entfernen?`)) {
+                            removeAllRecipeItems(group.recipeId);
+                          }
+                        }}
+                        style={{
+                          width: 32, height: 32, borderRadius: 8, border: 'none',
+                          backgroundColor: 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer', padding: 0, flexShrink: 0,
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C0C0C0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  }
                 >
                   {group.items.map((item) => (
                     <ItemRow key={item.id} item={item} onToggle={() => toggleItem(item.id)} onEdit={() => setEditItem(item)} onDelete={() => deleteItem(item.id)} onUpdate={(u) => updateItem(item.id, u)} />

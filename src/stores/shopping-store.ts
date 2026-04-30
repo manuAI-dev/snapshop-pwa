@@ -20,7 +20,9 @@ interface ShoppingStore {
   // Aktionen
   loadShoppingList: () => void;
   addRecipe: (recipe: Recipe) => void;
+  addRecipeBatch: (recipeId: string) => void;
   removeRecipeBatch: (recipeId: string) => void;
+  removeAllRecipeItems: (recipeId: string) => void;
   addCustomItem: (name: string, quantity: string, unit: string) => void;
   toggleItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<Pick<ShoppingItem, "name" | "quantity" | "unit">>) => void;
@@ -159,6 +161,88 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       });
     } catch (err: any) {
       set({ isLoading: false });
+    }
+  },
+
+  // +1: Rezept-Zutaten nochmal aus DB laden und als neuen Batch hinzufügen
+  addRecipeBatch: async (recipeId) => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Rezept + Zutaten aus DB laden
+      const { data: recipe, error: recipeError } = await supabase
+        .from("recipes")
+        .select("id, dish_name")
+        .eq("id", recipeId)
+        .single();
+      if (recipeError || !recipe) return;
+
+      const { data: ingredients, error: ingError } = await supabase
+        .from("ingredients")
+        .select("name, quantity, unit, category, notes")
+        .eq("recipe_id", recipeId);
+      if (ingError || !ingredients?.length) return;
+
+      const householdId = await getUserHouseholdId();
+      const itemsToInsert = ingredients.map((ing) => ({
+        user_id: user.id,
+        household_id: householdId,
+        name: ing.name,
+        quantity: ing.quantity || "",
+        unit: ing.unit || "",
+        category: ing.category || "other",
+        notes: ing.notes || undefined,
+        is_checked: false,
+        recipe_id: recipeId,
+        recipe_name: recipe.dish_name,
+      }));
+
+      const { data: inserted, error } = await supabase
+        .from("shopping_items")
+        .insert(itemsToInsert)
+        .select();
+      if (error) throw error;
+
+      const shoppingItems = (inserted || []).map(dbToShoppingItem);
+      set((state) => {
+        const allItems = [...state.items, ...shoppingItems];
+        return { items: allItems, ...deriveState(allItems) };
+      });
+    } catch {
+      // silent
+    }
+  },
+
+  // Alle Items eines Rezepts komplett löschen
+  removeAllRecipeItems: async (recipeId) => {
+    try {
+      const allItems = get().items.filter((i) => i.recipeId === recipeId);
+      const ids = allItems.map((i) => i.id);
+      if (ids.length === 0) return;
+
+      // Optimistic Update
+      set((state) => {
+        const remaining = state.items.filter((i) => i.recipeId !== recipeId);
+        return { items: remaining, ...deriveState(remaining) };
+      });
+
+      const { error } = await supabase
+        .from("shopping_items")
+        .delete()
+        .in("id", ids);
+
+      if (error) {
+        // Rollback
+        set((state) => {
+          const restored = [...state.items, ...allItems];
+          return { items: restored, ...deriveState(restored) };
+        });
+      }
+    } catch {
+      // silent
     }
   },
 
