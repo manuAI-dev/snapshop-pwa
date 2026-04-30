@@ -24,7 +24,7 @@ function getSourceFromUrl(url?: string): { id: string; name: string; color: stri
 }
 
 export default function RezeptePage() {
-  const { recipes, isLoading, loadRecipes, updateRecipe, _hydrated } = useRecipeStore();
+  const { recipes, isLoading, loadRecipes, updateRecipe } = useRecipeStore();
   const { lists, createList, deleteList, renameList } = useRecipeListStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -45,25 +45,20 @@ export default function RezeptePage() {
   const [menuListId, setMenuListId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  // WICHTIG: Erst nach Hydration laden → gecachte Rezepte werden sofort angezeigt,
-  // loadRecipes läuft dann im Hintergrund für frische Daten
+  // DEBUG
   const [debugInfo, setDebugInfo] = useState("init");
   const mountTime = useRef(Date.now());
 
   useEffect(() => {
-    setDebugInfo(`hydrated=${_hydrated} recipes=${recipes.length} loading=${isLoading} t=${Date.now() - mountTime.current}ms`);
-    if (_hydrated) {
-      const t0 = Date.now();
-      loadRecipes();
-      // Track when recipes arrive
-      const interval = setInterval(() => {
-        const r = useRecipeStore.getState();
-        setDebugInfo(`h=true r=${r.recipes.length} thumbs=${r.recipes.filter(x => x.thumbnail).length} load=${r.isLoading} t=${Date.now() - t0}ms`);
-        if (!r.isLoading && r.recipes.length > 0) clearInterval(interval);
-      }, 500);
-      return () => clearInterval(interval);
-    }
-  }, [_hydrated, loadRecipes]);
+    const t0 = Date.now();
+    loadRecipes();
+    const interval = setInterval(() => {
+      const r = useRecipeStore.getState();
+      setDebugInfo(`r=${r.recipes.length} thumbs=${r.recipes.filter(x => x.thumbnail).length} load=${r.isLoading} t=${Date.now() - t0}ms`);
+      if (!r.isLoading && r.recipes.length > 0) clearInterval(interval);
+    }, 200);
+    return () => clearInterval(interval);
+  }, [loadRecipes]);
 
   useEffect(() => {
     if (showNewListSheet && newListInputRef.current) {
@@ -327,7 +322,7 @@ export default function RezeptePage() {
 
           {/* Recipe Cards */}
           <div style={{ padding: '0 20px' }}>
-            {isLoading ? (
+            {isLoading && filtered.length === 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[1, 2, 3].map((i) => (
                   <div key={i} style={{ height: 200, backgroundColor: '#FCF7F2', borderRadius: 20, animation: 'pulse 2s infinite' }} />

@@ -13,8 +13,6 @@ interface RecipeStore {
   isLoading: boolean;
   isGenerating: boolean;
   error: string | null;
-  _hydrated: boolean;
-
   loadRecipes: () => void;
   setCurrentRecipe: (recipe: Recipe | null) => void;
   loadRecipeImages: (recipeId: string) => Promise<string[]>;
@@ -126,7 +124,6 @@ export const useRecipeStore = create<RecipeStore>()(
   isLoading: false,
   isGenerating: false,
   error: null,
-  _hydrated: false,
 
   loadRecipes: async () => {
     // Cache da? → kein Spinner, stilles Refresh im Hintergrund
@@ -663,12 +660,6 @@ export const useRecipeStore = create<RecipeStore>()(
           instructions: [],
         })),
       }),
-      onRehydrateStorage: () => {
-        return (state) => {
-          // Persist hat aus localStorage geladen → _hydrated = true
-          useRecipeStore.setState({ _hydrated: true });
-        };
-      },
     }
   )
 );

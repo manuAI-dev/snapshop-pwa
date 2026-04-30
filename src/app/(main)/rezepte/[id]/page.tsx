@@ -13,7 +13,7 @@ import { Recipe, Ingredient, getTotalTime, NutritionInfo } from "@/types";
 export default function RecipeDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { recipes, currentRecipe, deleteRecipe, updateRecipe, loadRecipes, loadRecipeDetail, _hydrated } = useRecipeStore();
+  const { recipes, currentRecipe, deleteRecipe, updateRecipe, loadRecipes, loadRecipeDetail } = useRecipeStore();
   const { addRecipe: addToShopping } = useShoppingStore();
   const { addMeal } = usePlannerStore();
   const { user } = useAuthStore();
@@ -61,8 +61,8 @@ export default function RecipeDetailPage() {
   };
 
   useEffect(() => {
-    if (_hydrated && recipes.length === 0) loadRecipes();
-  }, [_hydrated, recipes.length, loadRecipes]);
+    if (recipes.length === 0) loadRecipes();
+  }, [recipes.length, loadRecipes]);
 
   const recipe: Recipe | undefined =
     recipes.find((r) => r.id === params.id) ||
