@@ -107,7 +107,10 @@ export default function ScanModal({ isOpen, onClose }: ScanModalProps) {
         canvas.toBlob(
           (blob) => {
             if (!blob) return reject(new Error("Compression failed"));
-            const compressed = new File([blob], file.name, { type: "image/jpeg" });
+            // Safari wirft "The string did not match the expected pattern" bei
+            // Dateinamen mit Sonderzeichen (z.B. iOS-Kamerafotos). Sicherer Dateiname.
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "photo.jpg";
+            const compressed = new File([blob], safeName, { type: "image/jpeg" });
             resolve({ file: compressed, base64 });
           },
           "image/jpeg",
@@ -129,9 +132,18 @@ export default function ScanModal({ isOpen, onClose }: ScanModalProps) {
     }
     setPhase("analyzing");
     try {
-      const compressed = await Promise.all(selectedFiles.map((f) => compressImage(f)));
-      const files = compressed.map((c) => c.file);
-      const base64s = compressed.map((c) => c.base64);
+      // Kompression versuchen, bei Fehler Originalbilder senden
+      let files: File[];
+      let base64s: string[];
+      try {
+        const compressed = await Promise.all(selectedFiles.map((f) => compressImage(f)));
+        files = compressed.map((c) => c.file);
+        base64s = compressed.map((c) => c.base64);
+      } catch {
+        // Fallback: Originalbilder mit sicheren Dateinamen
+        files = selectedFiles.map((f, i) => new File([f], `photo_${i}.jpg`, { type: f.type || "image/jpeg" }));
+        base64s = previews;
+      }
       const saved = await generateFromImage(files, base64s);
       resetAndClose();
       router.push(`/rezepte/${saved.id}`);
@@ -169,9 +181,16 @@ export default function ScanModal({ isOpen, onClose }: ScanModalProps) {
     }
     setPhase("analyzing");
     try {
-      const compressed = await Promise.all(selectedFiles.map((f) => compressImage(f)));
-      const files = compressed.map((c) => c.file);
-      const base64s = compressed.map((c) => c.base64);
+      let files: File[];
+      let base64s: string[];
+      try {
+        const compressed = await Promise.all(selectedFiles.map((f) => compressImage(f)));
+        files = compressed.map((c) => c.file);
+        base64s = compressed.map((c) => c.base64);
+      } catch {
+        files = selectedFiles.map((f, i) => new File([f], `dish_${i}.jpg`, { type: f.type || "image/jpeg" }));
+        base64s = previews;
+      }
       const saved = await generateFromRestaurant(files, base64s);
       resetAndClose();
       router.push(`/rezepte/${saved.id}`);
@@ -188,8 +207,13 @@ export default function ScanModal({ isOpen, onClose }: ScanModalProps) {
     setPhase("analyzing");
     setFridgeError(null);
     try {
-      const compressed = await Promise.all(selectedFiles.map((f) => compressImage(f)));
-      const base64s = compressed.map((c) => c.base64);
+      let base64s: string[];
+      try {
+        const compressed = await Promise.all(selectedFiles.map((f) => compressImage(f)));
+        base64s = compressed.map((c) => c.base64);
+      } catch {
+        base64s = previews;
+      }
       const res = await fetch("/api/recipe/fridge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
