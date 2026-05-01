@@ -449,7 +449,9 @@ export const useRecipeStore = create<RecipeStore>()(
 
   generateFromImage: async (imageFiles, previewBase64s) => {
     set({ isGenerating: true, error: null });
+    let step = "init";
     try {
+      step = "prepare";
       const files = Array.isArray(imageFiles) ? imageFiles : [imageFiles];
       const previews = Array.isArray(previewBase64s)
         ? previewBase64s
@@ -457,21 +459,25 @@ export const useRecipeStore = create<RecipeStore>()(
           ? [previewBase64s]
           : [];
 
+      step = "formdata";
       const formData = new FormData();
       for (const file of files) {
         formData.append("image", file);
       }
 
+      step = "fetch-ai";
       const response = await fetch("/api/recipe/generate", {
         method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Rezepterkennung fehlgeschlagen");
+        let errMsg = "Rezepterkennung fehlgeschlagen";
+        try { const errData = await response.json(); errMsg = errData.error || errMsg; } catch {}
+        throw new Error(`API ${response.status}: ${errMsg}`);
       }
 
+      step = "parse-json";
       const recipe: Recipe = await response.json();
       // Auto-add the scan image(s) as recipe images
       if (previews.length > 0) {
@@ -480,14 +486,17 @@ export const useRecipeStore = create<RecipeStore>()(
       }
 
       // Auto-save to Supabase
+      step = "generate-id";
       const id = recipe.id || generateId();
       const saved = { ...recipe, id };
 
+      step = "auth";
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      step = "save-recipe";
       const dbRecipe = recipeToDB(recipe);
       const householdId = await getUserHouseholdId();
       const { data: insertedRecipe, error: recipeError } = await supabase
@@ -499,6 +508,7 @@ export const useRecipeStore = create<RecipeStore>()(
       if (recipeError) throw recipeError;
 
       // Insert ingredients
+      step = "save-ingredients";
       if (recipe.ingredients && recipe.ingredients.length > 0) {
         const ingredientsToInsert = recipe.ingredients.map((ing) =>
           ingredientToDB(ing, insertedRecipe.id)
@@ -516,12 +526,17 @@ export const useRecipeStore = create<RecipeStore>()(
       }));
       return saved;
     } catch (err: any) {
-      // Safari/WebKit gibt "load failed" bei Netzwerk-Timeouts
-      const msg = err.message === "Load failed" || err.message === "load failed"
-        ? "Netzwerk-Timeout: Die KI-Verarbeitung hat zu lange gedauert. Bitte versuche es erneut."
-        : err.message;
-      set({ error: msg, isGenerating: false });
-      throw new Error(msg);
+      const rawMsg = err?.message || String(err);
+      // Benutzerfreundliche Meldung mit Debug-Info
+      let msg = rawMsg;
+      if (rawMsg === "Load failed" || rawMsg === "load failed") {
+        msg = "Netzwerk-Timeout: Bitte versuche es erneut.";
+      }
+      // Step-Info für Debugging anhängen
+      const fullMsg = `${msg} [Schritt: ${step}]`;
+      console.error("generateFromImage error:", step, err);
+      set({ error: fullMsg, isGenerating: false });
+      throw new Error(fullMsg);
     }
   },
 

@@ -132,22 +132,24 @@ export default function ScanModal({ isOpen, onClose }: ScanModalProps) {
     }
     setPhase("analyzing");
     try {
-      // Kompression versuchen, bei Fehler Originalbilder senden
+      // Schritt 1: Bilder komprimieren
       let files: File[];
       let base64s: string[];
       try {
         const compressed = await Promise.all(selectedFiles.map((f) => compressImage(f)));
         files = compressed.map((c) => c.file);
         base64s = compressed.map((c) => c.base64);
-      } catch {
-        // Fallback: Originalbilder mit sicheren Dateinamen
+      } catch (compErr: any) {
+        console.warn("Kompression fehlgeschlagen, nutze Originale:", compErr?.message);
         files = selectedFiles.map((f, i) => new File([f], `photo_${i}.jpg`, { type: f.type || "image/jpeg" }));
         base64s = previews;
       }
+      // Schritt 2: AI-Erkennung + Speichern
       const saved = await generateFromImage(files, base64s);
       resetAndClose();
       router.push(`/rezepte/${saved.id}`);
-    } catch {
+    } catch (err: any) {
+      console.error("handleGenerateFromImage error:", err);
       setPhase("input");
     }
   };

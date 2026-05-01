@@ -168,13 +168,19 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("Not authenticated");
+      if (!session?.user) {
+        alert("Fehler: Nicht eingeloggt. Bitte App neu starten.");
+        return;
+      }
 
       // Existierende unchecked Items dieses Rezepts als Vorlage nehmen
       const existingItems = get().items.filter(
         (i) => i.recipeId === recipeId && !i.isChecked
       );
-      if (existingItems.length === 0) return;
+      if (existingItems.length === 0) {
+        alert("Keine Zutaten zum Verdoppeln gefunden.");
+        return;
+      }
 
       // Distinct Items (nach Name) — keine Duplikate aus vorherigen Batches
       const seen = new Set<string>();
@@ -204,7 +210,9 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       });
 
       if (!res.ok) {
-        console.error("addRecipeBatch API error:", await res.text());
+        const errText = await res.text();
+        console.error("addRecipeBatch API error:", errText);
+        alert(`+1 Fehler: ${errText}`);
         return;
       }
 
@@ -214,8 +222,9 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         const allItems = [...state.items, ...shoppingItems];
         return { items: allItems, ...deriveState(allItems) };
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("addRecipeBatch error:", err);
+      alert(`+1 Fehler: ${err?.message || "Unbekannt"}`);
     }
   },
 
