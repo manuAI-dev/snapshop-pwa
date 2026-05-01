@@ -127,33 +127,30 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
   addRecipe: async (recipe) => {
     set({ isLoading: true });
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Not authenticated");
 
       // Convert ingredients to shopping items
       const householdId = await getUserHouseholdId();
       const itemsToInsert = (recipe.ingredients || []).map((ing) => ({
-        user_id: user.id,
         household_id: householdId,
         name: ing.name,
         quantity: ing.quantity,
         unit: ing.unit,
         category: ing.category,
         notes: ing.notes,
-        is_checked: false,
         recipe_id: recipe.id,
         recipe_name: recipe.dishName,
       }));
 
-      const { data: inserted, error } = await supabase
-        .from("shopping_items")
-        .insert(itemsToInsert)
-        .select();
+      const res = await fetch("/api/shopping/batch-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: itemsToInsert, userId: session.user.id }),
+      });
+      if (!res.ok) throw new Error("Insert failed");
 
-      if (error) throw error;
-
+      const { items: inserted } = await res.json();
       const shoppingItems = (inserted || []).map(dbToShoppingItem);
       set((state) => {
         const allItems = [...state.items, ...shoppingItems];
@@ -165,12 +162,15 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
   },
 
   // +1: Rezept-Zutaten nochmal hinzufügen basierend auf existierenden Shopping-Items
+  // Nutzt API Route mit Service Role Key um RLS zu umgehen
   addRecipeBatch: async (recipeId) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Not authenticated");
 
-      // Statt DB-Query: existierende unchecked Items dieses Rezepts kopieren
+      // Existierende unchecked Items dieses Rezepts als Vorlage nehmen
       const existingItems = get().items.filter(
         (i) => i.recipeId === recipeId && !i.isChecked
       );
@@ -186,28 +186,29 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
 
       const householdId = await getUserHouseholdId();
       const itemsToInsert = uniqueItems.map((item) => ({
-        user_id: session.user.id,
         household_id: householdId,
         name: item.name,
         quantity: item.quantity || "",
         unit: item.unit || "",
         category: item.category || "other",
         notes: item.notes || null,
-        is_checked: false,
         recipe_id: recipeId,
         recipe_name: item.recipeName || null,
       }));
 
-      const { data: inserted, error } = await supabase
-        .from("shopping_items")
-        .insert(itemsToInsert)
-        .select();
+      // API Route mit Service Role Key — umgeht RLS
+      const res = await fetch("/api/shopping/batch-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: itemsToInsert, userId: session.user.id }),
+      });
 
-      if (error) {
-        console.error("addRecipeBatch insert error:", error);
+      if (!res.ok) {
+        console.error("addRecipeBatch API error:", await res.text());
         return;
       }
 
+      const { items: inserted } = await res.json();
       const shoppingItems = (inserted || []).map(dbToShoppingItem);
       set((state) => {
         const allItems = [...state.items, ...shoppingItems];
@@ -218,9 +219,12 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
     }
   },
 
-  // Alle Items eines Rezepts komplett löschen
+  // Alle Items eines Rezepts komplett löschen (API Route umgeht RLS)
   removeAllRecipeItems: async (recipeId) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
       const allItems = get().items.filter((i) => i.recipeId === recipeId);
       const ids = allItems.map((i) => i.id);
       if (ids.length === 0) return;
@@ -231,12 +235,13 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         return { items: remaining, ...deriveState(remaining) };
       });
 
-      const { error } = await supabase
-        .from("shopping_items")
-        .delete()
-        .in("id", ids);
+      const res = await fetch("/api/shopping/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, userId: session.user.id }),
+      });
 
-      if (error) {
+      if (!res.ok) {
         // Rollback
         set((state) => {
           const restored = [...state.items, ...allItems];
@@ -251,10 +256,8 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
   removeRecipeBatch: async (recipeId) => {
     set({ isLoading: true });
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Not authenticated");
 
       // Alle Items für dieses Rezept holen, nach Timestamp gruppieren
       const allItems = get().items.filter((i) => i.recipeId === recipeId && !i.isChecked);
@@ -266,25 +269,22 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       }
 
       const batches = Object.entries(timestampGroups).sort(([a], [b]) => b.localeCompare(a)); // neueste zuerst
+      let idsToDelete: string[] = [];
+
       if (batches.length <= 1) {
-        // Letzter Batch → alle Items für dieses Rezept löschen
-        const ids = allItems.map((i) => i.id);
-        if (ids.length > 0) {
-          const { error } = await supabase
-            .from("shopping_items")
-            .delete()
-            .in("id", ids);
-          if (error) throw error;
-        }
+        idsToDelete = allItems.map((i) => i.id);
       } else {
-        // Neuesten Batch löschen
         const [, newestBatchItems] = batches[0];
-        const ids = newestBatchItems.map((i) => i.id);
-        const { error } = await supabase
-          .from("shopping_items")
-          .delete()
-          .in("id", ids);
-        if (error) throw error;
+        idsToDelete = newestBatchItems.map((i) => i.id);
+      }
+
+      if (idsToDelete.length > 0) {
+        const res = await fetch("/api/shopping/batch-delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: idsToDelete, userId: session.user.id }),
+        });
+        if (!res.ok) throw new Error("Delete failed");
       }
 
       // State aktualisieren
@@ -305,31 +305,29 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
   addCustomItem: async (name, quantity, unit) => {
     set({ isLoading: true });
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Not authenticated");
 
       const householdId = await getUserHouseholdId();
-      const { data: inserted, error } = await supabase
-        .from("shopping_items")
-        .insert([
-          {
-            user_id: user.id,
+      const res = await fetch("/api/shopping/batch-add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: session.user.id,
+          items: [{
             household_id: householdId,
             name,
             quantity,
             unit,
             category: "other",
-            is_checked: false,
-          },
-        ])
-        .select()
-        .single();
+          }],
+        }),
+      });
 
-      if (error) throw error;
+      if (!res.ok) throw new Error("Insert failed");
 
-      const item = dbToShoppingItem(inserted);
+      const { items: inserted } = await res.json();
+      const item = dbToShoppingItem(inserted[0]);
       set((state) => {
         const allItems = [...state.items, item];
         return { items: allItems, isLoading: false, ...deriveState(allItems) };
@@ -350,14 +348,21 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       return { items: allItems, ...deriveState(allItems) };
     });
 
-    // DB im Hintergrund synchronisieren
+    // DB im Hintergrund synchronisieren via API Route
     try {
-      const { error } = await supabase
-        .from("shopping_items")
-        .update({ is_checked: toggled.isChecked })
-        .eq("id", id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Not authenticated");
 
-      if (error) throw error;
+      const res = await fetch("/api/shopping/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          userId: session.user.id,
+          updates: { is_checked: toggled.isChecked },
+        }),
+      });
+      if (!res.ok) throw new Error("Update failed");
     } catch {
       // Rollback bei Fehler
       set((state) => {
@@ -379,17 +384,20 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
     });
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Not authenticated");
+
       const dbUpdates: any = {};
       if (updates.name !== undefined) dbUpdates.name = updates.name;
       if (updates.quantity !== undefined) dbUpdates.quantity = updates.quantity;
       if (updates.unit !== undefined) dbUpdates.unit = updates.unit;
 
-      const { error } = await supabase
-        .from("shopping_items")
-        .update(dbUpdates)
-        .eq("id", id);
-
-      if (error) throw error;
+      const res = await fetch("/api/shopping/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, userId: session.user.id, updates: dbUpdates }),
+      });
+      if (!res.ok) throw new Error("Update failed");
     } catch {
       // Rollback
       set((state) => {
@@ -408,12 +416,15 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
     });
 
     try {
-      const { error } = await supabase
-        .from("shopping_items")
-        .delete()
-        .eq("id", id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Not authenticated");
 
-      if (error) throw error;
+      const res = await fetch("/api/shopping/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [id], userId: session.user.id }),
+      });
+      if (!res.ok) throw new Error("Delete failed");
     } catch {
       // Rollback
       if (current) {
@@ -428,17 +439,19 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
   clearList: async () => {
     set({ isLoading: true });
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Not authenticated");
 
-      // Lösche alle sichtbaren Items (eigene + Haushalt via RLS)
+      // Lösche alle sichtbaren Items via API Route
       const ids = get().items.map((i) => i.id);
       if (ids.length === 0) { set({ isLoading: false }); return; }
-      const { error } = await supabase.from("shopping_items").delete().in("id", ids);
 
-      if (error) throw error;
+      const res = await fetch("/api/shopping/batch-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, userId: session.user.id }),
+      });
+      if (!res.ok) throw new Error("Delete failed");
 
       set({
         items: [],

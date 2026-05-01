@@ -2,5 +2,14 @@
   command = "npm run build"
   publish = ".next"
 
+[functions]
+  # Erhöhe Timeout für AI-Verarbeitung (Claude API mit Bildanalyse braucht 15-30s)
+  external_node_modules = ["sharp"]
+  node_bundler = "esbuild"
+
+# Timeout für alle Next.js API Routes auf 60s setzen
+[functions."*"]
+  timeout = 60
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"

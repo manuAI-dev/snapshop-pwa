@@ -516,8 +516,12 @@ export const useRecipeStore = create<RecipeStore>()(
       }));
       return saved;
     } catch (err: any) {
-      set({ error: err.message, isGenerating: false });
-      throw err;
+      // Safari/WebKit gibt "load failed" bei Netzwerk-Timeouts
+      const msg = err.message === "Load failed" || err.message === "load failed"
+        ? "Netzwerk-Timeout: Die KI-Verarbeitung hat zu lange gedauert. Bitte versuche es erneut."
+        : err.message;
+      set({ error: msg, isGenerating: false });
+      throw new Error(msg);
     }
   },
 
@@ -599,8 +603,11 @@ export const useRecipeStore = create<RecipeStore>()(
       }));
       return saved;
     } catch (err: any) {
-      set({ error: err.message, isGenerating: false });
-      throw err;
+      const msg = err.message === "Load failed" || err.message === "load failed"
+        ? "Netzwerk-Timeout: Die KI-Verarbeitung hat zu lange gedauert. Bitte versuche es erneut."
+        : err.message;
+      set({ error: msg, isGenerating: false });
+      throw new Error(msg);
     }
   },
 
@@ -672,8 +679,11 @@ export const useRecipeStore = create<RecipeStore>()(
       }));
       return saved;
     } catch (err: any) {
-      set({ error: err.message, isGenerating: false });
-      throw err;
+      const msg = err.message === "Load failed" || err.message === "load failed"
+        ? "Netzwerk-Timeout: Die KI-Verarbeitung hat zu lange gedauert. Bitte versuche es erneut."
+        : err.message;
+      set({ error: msg, isGenerating: false });
+      throw new Error(msg);
     }
   },
 
