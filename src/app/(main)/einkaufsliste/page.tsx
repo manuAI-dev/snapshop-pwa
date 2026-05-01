@@ -409,16 +409,18 @@ function ItemRow({ item, onToggle, onEdit, onDelete, onUpdate }: {
               <span style={{ fontSize: 11, fontWeight: 700, color: '#4B164C', textTransform: 'uppercase', letterSpacing: 0.5 }}>Ersetzen durch:</span>
               {alts.map((alt, i) => (
                 <button key={i} onClick={() => handleSwap(alt.name)} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+                  display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px',
                   backgroundColor: 'white', borderRadius: 10, border: '1px solid #E0D5CA',
                   cursor: 'pointer', textAlign: 'left', width: '100%',
                 }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7B2D7D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7B2D7D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M16 3l4 4-4 4"/><path d="M20 7H4"/><path d="M8 21l-4-4 4-4"/><path d="M4 17h16"/></svg>
                     <span style={{ fontSize: 14, fontWeight: 600, color: '#212022' }}>{alt.name}</span>
-                    <span style={{ fontSize: 11, color: '#9193A0', display: 'block' }}>{alt.note}</span>
                   </div>
-                  <span style={{ fontSize: 11, color: '#F2894F', fontWeight: 600, flexShrink: 0 }}>{alt.ratio}</span>
+                  <span style={{ fontSize: 12, color: '#F2894F', fontWeight: 600 }}>{alt.ratio}</span>
+                  {alt.note && (
+                    <span style={{ fontSize: 11, color: '#9193A0', lineHeight: 1.4 }}>{alt.note}</span>
+                  )}
                 </button>
               ))}
             </div>

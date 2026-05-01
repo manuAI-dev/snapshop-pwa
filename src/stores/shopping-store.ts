@@ -164,55 +164,57 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
     }
   },
 
-  // +1: Rezept-Zutaten nochmal aus DB laden und als neuen Batch hinzufügen
+  // +1: Rezept-Zutaten nochmal hinzufügen basierend auf existierenden Shopping-Items
   addRecipeBatch: async (recipeId) => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
 
-      // Rezept + Zutaten aus DB laden
-      const { data: recipe, error: recipeError } = await supabase
-        .from("recipes")
-        .select("id, dish_name")
-        .eq("id", recipeId)
-        .single();
-      if (recipeError || !recipe) return;
+      // Statt DB-Query: existierende unchecked Items dieses Rezepts kopieren
+      const existingItems = get().items.filter(
+        (i) => i.recipeId === recipeId && !i.isChecked
+      );
+      if (existingItems.length === 0) return;
 
-      const { data: ingredients, error: ingError } = await supabase
-        .from("ingredients")
-        .select("name, quantity, unit, category, notes")
-        .eq("recipe_id", recipeId);
-      if (ingError || !ingredients?.length) return;
+      // Distinct Items (nach Name) — keine Duplikate aus vorherigen Batches
+      const seen = new Set<string>();
+      const uniqueItems = existingItems.filter((i) => {
+        if (seen.has(i.name)) return false;
+        seen.add(i.name);
+        return true;
+      });
 
       const householdId = await getUserHouseholdId();
-      const itemsToInsert = ingredients.map((ing) => ({
-        user_id: user.id,
+      const itemsToInsert = uniqueItems.map((item) => ({
+        user_id: session.user.id,
         household_id: householdId,
-        name: ing.name,
-        quantity: ing.quantity || "",
-        unit: ing.unit || "",
-        category: ing.category || "other",
-        notes: ing.notes || undefined,
+        name: item.name,
+        quantity: item.quantity || "",
+        unit: item.unit || "",
+        category: item.category || "other",
+        notes: item.notes || null,
         is_checked: false,
         recipe_id: recipeId,
-        recipe_name: recipe.dish_name,
+        recipe_name: item.recipeName || null,
       }));
 
       const { data: inserted, error } = await supabase
         .from("shopping_items")
         .insert(itemsToInsert)
         .select();
-      if (error) throw error;
+
+      if (error) {
+        console.error("addRecipeBatch insert error:", error);
+        return;
+      }
 
       const shoppingItems = (inserted || []).map(dbToShoppingItem);
       set((state) => {
         const allItems = [...state.items, ...shoppingItems];
         return { items: allItems, ...deriveState(allItems) };
       });
-    } catch {
-      // silent
+    } catch (err) {
+      console.error("addRecipeBatch error:", err);
     }
   },
 

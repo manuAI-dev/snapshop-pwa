@@ -7,6 +7,9 @@ import { supabase } from "@/lib/supabase";
 import { generateId, getUserHouseholdId } from "@/lib/utils";
 import { generateThumbnail } from "@/utils/compress-image";
 
+// IDs von Rezepten die gerade gelöscht werden — verhindert dass loadRecipes sie wieder zeigt
+const pendingDeletes = new Set<string>();
+
 interface RecipeStore {
   recipes: Recipe[];
   currentRecipe: Recipe | null;
@@ -152,7 +155,10 @@ export const useRecipeStore = create<RecipeStore>()(
 
       if (error) throw error;
 
-      const recipeList: Recipe[] = (recipes || []).map(dbToRecipeLight);
+      // pendingDeletes rausfiltern — verhindert dass gelöschte Rezepte wieder auftauchen
+      const recipeList: Recipe[] = (recipes || [])
+        .filter(r => !pendingDeletes.has(r.id))
+        .map(dbToRecipeLight);
       set({ recipes: recipeList, isLoading: false });
 
       // Einmaliger Reset: Thumbnails neu generieren (v4 = URL-safe + CORS fix)
@@ -410,29 +416,33 @@ export const useRecipeStore = create<RecipeStore>()(
   },
 
   deleteRecipe: (recipeId) => {
-    // Optimistic Delete: sofort aus dem UI entfernen
+    // 1. Sofort aus UI entfernen (optimistic)
+    pendingDeletes.add(recipeId);
     set((state) => ({
       recipes: state.recipes.filter((r) => r.id !== recipeId),
       currentRecipe: state.currentRecipe?.id === recipeId ? null : state.currentRecipe,
     }));
 
-    // DB-Delete im Hintergrund
+    // 2. Via API-Route löschen (Service Role Key umgeht RLS)
     (async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         if (!session?.user) return;
 
-        await supabase.from("ingredients").delete().eq("recipe_id", recipeId);
+        const res = await fetch("/api/recipe/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipeId, userId: session.user.id }),
+        });
 
-        await supabase
-          .from("recipes")
-          .delete()
-          .eq("id", recipeId)
-          .eq("user_id", session.user.id);
-      } catch {
-        // Silent — Rezept ist bereits aus dem UI entfernt
+        if (!res.ok) {
+          console.error("Delete failed:", await res.text());
+        }
+      } catch (err) {
+        console.error("Delete error:", err);
+      } finally {
+        // Nach ein paar Sekunden aus pendingDeletes entfernen
+        setTimeout(() => pendingDeletes.delete(recipeId), 10000);
       }
     })();
   },
