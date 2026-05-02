@@ -27,18 +27,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const safeItems = items.map((item: any) => ({
-      user_id: userId,
-      household_id: item.household_id || null,
-      name: item.name,
-      quantity: item.quantity || "",
-      unit: item.unit || "",
-      category: item.category || "other",
-      notes: item.notes || null,
-      is_checked: false,
-      recipe_id: item.recipe_id || null,
-      recipe_name: item.recipe_name || null,
-    }));
+    const safeItems = items.map((item: any) => {
+      const row: any = {
+        user_id: userId,
+        name: item.name,
+        quantity: item.quantity || "",
+        unit: item.unit || "",
+        category: item.category || "other",
+        notes: item.notes || null,
+        is_checked: false,
+        recipe_id: item.recipe_id || null,
+        recipe_name: item.recipe_name || null,
+      };
+      // household_id nur setzen wenn vorhanden (Spalte existiert evtl. nicht)
+      if (item.household_id) row.household_id = item.household_id;
+      return row;
+    });
 
     const { data: inserted, error } = await supabaseAdmin
       .from("shopping_items")

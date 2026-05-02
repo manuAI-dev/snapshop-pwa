@@ -132,7 +132,6 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
 
       // Convert ingredients to shopping items
       const itemsToInsert = (recipe.ingredients || []).map((ing) => ({
-        household_id: null,
         name: ing.name,
         quantity: ing.quantity,
         unit: ing.unit,
@@ -191,10 +190,7 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         return true;
       });
 
-      // household_id: direkt null setzen, DB-Default greift
-      // Vermeidet langsamen getUserHouseholdId() → getUser() Netzwerk-Call
       const itemsToInsert = uniqueItems.map((item) => ({
-        household_id: null,
         name: item.name,
         quantity: item.quantity || "",
         unit: item.unit || "",
@@ -336,7 +332,6 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         body: JSON.stringify({
           userId: session.user.id,
           items: [{
-            household_id: null,
             name,
             quantity,
             unit,
