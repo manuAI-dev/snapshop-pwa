@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     if (safeIds.length === 0) {
       // DEBUG: Zeige user_id Mismatch Details
-      const dbUserIds = [...new Set(items.map((item: any) => item.user_id))];
+      const dbUserIds = Array.from(new Set(items.map((item: any) => item.user_id)));
       console.error("batch-delete 403: sentUserId=", userId, "dbUserIds=", dbUserIds);
       return NextResponse.json({
         error: "Not authorized",

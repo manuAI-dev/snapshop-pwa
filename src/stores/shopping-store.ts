@@ -119,7 +119,7 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
 
       // DEBUG: Zeige user_id Vergleich
       if (items && items.length > 0) {
-        const dbUserIds = [...new Set(items.map((i: any) => i.user_id))];
+        const dbUserIds = Array.from(new Set(items.map((i: any) => i.user_id)));
         console.log("DEBUG loadShoppingList: auth.user.id=" + user.id + ", DB user_ids=", dbUserIds, ", items=" + items.length);
       }
 
