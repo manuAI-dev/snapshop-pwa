@@ -269,145 +269,121 @@ export async function POST(request: NextRequest) {
       ];
     }
 
-    // Streaming-Response: sofort Bytes zum Client senden, kein Timeout
-    const encoder = new TextEncoder();
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        // Keepalive: alle 3s ein Newline senden, damit Netlify nicht abbricht
-        const keepalive = setInterval(() => {
-          try { controller.enqueue(encoder.encode("\n")); } catch { /* stream closed */ }
-        }, 3000);
-
-        try {
-          // Anthropic API Call mit Streaming
-          const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
-            method: "POST",
-            headers: {
-              "x-api-key": ANTHROPIC_API_KEY!,
-              "anthropic-version": "2023-06-01",
-              "content-type": "application/json",
-            },
-            body: JSON.stringify({
-              model: CLAUDE_MODEL,
-              max_tokens: 4000,
-              temperature: 0.3,
-              stream: true,
-              system: systemPrompt,
-              messages: [{ role: "user", content: userContent }],
-            }),
-          });
-
-          if (!aiResponse.ok) {
-            let errMsg = "KI-Verarbeitung fehlgeschlagen";
-            try {
-              const errorData = await aiResponse.json();
-              errMsg = errorData?.error?.message || errMsg;
-            } catch { /* ignore */ }
-            clearInterval(keepalive);
-            controller.enqueue(encoder.encode(JSON.stringify({ error: `API Fehler: ${errMsg} (Status ${aiResponse.status})` })));
-            controller.close();
-            return;
-          }
-
-          // Stream lesen, Text sammeln
-          const reader = aiResponse.body?.getReader();
-          if (!reader) {
-            clearInterval(keepalive);
-            controller.enqueue(encoder.encode(JSON.stringify({ error: "Kein Stream" })));
-            controller.close();
-            return;
-          }
-
-          const decoder = new TextDecoder();
-          let fullText = "";
-          let sseBuffer = "";
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            sseBuffer += decoder.decode(value, { stream: true });
-            const lines = sseBuffer.split("\n");
-            sseBuffer = lines.pop() || "";
-
-            for (const line of lines) {
-              if (!line.startsWith("data: ")) continue;
-              const jsonStr = line.slice(6).trim();
-              if (jsonStr === "[DONE]") continue;
-              try {
-                const event = JSON.parse(jsonStr);
-                if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-                  fullText += event.delta.text;
-                }
-              } catch { /* skip */ }
-            }
-          }
-
-          clearInterval(keepalive);
-
-          if (!fullText) {
-            controller.enqueue(encoder.encode(JSON.stringify({ error: "Keine Antwort von der KI erhalten" })));
-            controller.close();
-            return;
-          }
-
-          // JSON parsen
-          let jsonString = fullText.trim();
-          const jsonMatch = jsonString.match(/```(?:json)?\s*([\s\S]*?)```/);
-          if (jsonMatch) jsonString = jsonMatch[1].trim();
-
-          const recipeJson = JSON.parse(jsonString);
-
-          // Normalisieren
-          const rawNutrition = recipeJson.nutrition;
-          const nutrition = rawNutrition
-            ? {
-                calories: Math.round(Number(rawNutrition.calories) || 0),
-                protein: Math.round(Number(rawNutrition.protein) || 0),
-                fat: Math.round(Number(rawNutrition.fat) || 0),
-                carbs: Math.round(Number(rawNutrition.carbs) || 0),
-                fiber: Math.round(Number(rawNutrition.fiber) || 0),
-                sugar: Math.round(Number(rawNutrition.sugar) || 0),
-              }
-            : undefined;
-
-          const recipe = {
-            dishName: recipeJson.dishName || recipeJson.dish_name || "Unbekanntes Rezept",
-            cuisine: recipeJson.cuisine || "International",
-            description: recipeJson.description || "",
-            ingredients: (recipeJson.ingredients || []).map((ing: any) => ({
-              name: ing.name || "",
-              quantity: String(ing.quantity || ""),
-              unit: ing.unit || "",
-              category: ing.category || "other",
-              group: ing.group || "",
-              notes: ing.notes || "",
-              isSelected: false,
-            })),
-            instructions: recipeJson.instructions || [],
-            servings: recipeJson.servings || 4,
-            prepTime: recipeJson.prepTime || recipeJson.prep_time || 0,
-            cookTime: recipeJson.cookTime || recipeJson.cook_time || 0,
-            difficulty: (recipeJson.difficulty || "medium").toLowerCase(),
-            nutrition,
-            recipeImages: [],
-          };
-
-          controller.enqueue(encoder.encode(JSON.stringify(recipe)));
-          controller.close();
-        } catch (err: any) {
-          clearInterval(keepalive);
-          console.error("Recipe generation stream error:", err);
-          controller.enqueue(encoder.encode(JSON.stringify({ error: err.message || "Unbekannter Fehler" })));
-          controller.close();
-        }
+    // Anthropic API Call mit Streaming (sammelt Text serverseitig)
+    // Edge Runtime gibt uns 50s — mehr als genug für Claude
+    const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
       },
+      body: JSON.stringify({
+        model: CLAUDE_MODEL,
+        max_tokens: 4000,
+        temperature: 0.3,
+        stream: true,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userContent }],
+      }),
     });
 
-    return new Response(stream, {
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
+    if (!aiResponse.ok) {
+      let errMsg = "KI-Verarbeitung fehlgeschlagen";
+      let errType = "unknown";
+      try {
+        const errorData = await aiResponse.json();
+        errMsg = errorData?.error?.message || errMsg;
+        errType = errorData?.error?.type || errType;
+      } catch { /* ignore */ }
+      console.error("Anthropic API Error:", aiResponse.status, errMsg);
+      return NextResponse.json(
+        { error: `API Fehler: ${errMsg} (${errType}, Status ${aiResponse.status})` },
+        { status: aiResponse.status }
+      );
+    }
+
+    // SSE-Stream lesen, Text sammeln
+    const reader = aiResponse.body?.getReader();
+    if (!reader) {
+      return NextResponse.json({ error: "Kein Response-Stream von Anthropic" }, { status: 500 });
+    }
+
+    const decoder = new TextDecoder();
+    let fullText = "";
+    let sseBuffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      sseBuffer += decoder.decode(value, { stream: true });
+      const lines = sseBuffer.split("\n");
+      sseBuffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === "[DONE]") continue;
+        try {
+          const event = JSON.parse(jsonStr);
+          if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+            fullText += event.delta.text;
+          }
+        } catch { /* skip unparseable SSE lines */ }
+      }
+    }
+
+    if (!fullText) {
+      return NextResponse.json(
+        { error: "Keine Antwort von der KI erhalten" },
+        { status: 500 }
+      );
+    }
+
+    // JSON aus der Antwort parsen
+    let jsonString = fullText.trim();
+    const jsonMatch = jsonString.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) jsonString = jsonMatch[1].trim();
+
+    const recipeJson = JSON.parse(jsonString);
+
+    // Normalisieren
+    const rawNutrition = recipeJson.nutrition;
+    const nutrition = rawNutrition
+      ? {
+          calories: Math.round(Number(rawNutrition.calories) || 0),
+          protein: Math.round(Number(rawNutrition.protein) || 0),
+          fat: Math.round(Number(rawNutrition.fat) || 0),
+          carbs: Math.round(Number(rawNutrition.carbs) || 0),
+          fiber: Math.round(Number(rawNutrition.fiber) || 0),
+          sugar: Math.round(Number(rawNutrition.sugar) || 0),
+        }
+      : undefined;
+
+    const recipe = {
+      dishName: recipeJson.dishName || recipeJson.dish_name || "Unbekanntes Rezept",
+      cuisine: recipeJson.cuisine || "International",
+      description: recipeJson.description || "",
+      ingredients: (recipeJson.ingredients || []).map((ing: any) => ({
+        name: ing.name || "",
+        quantity: String(ing.quantity || ""),
+        unit: ing.unit || "",
+        category: ing.category || "other",
+        group: ing.group || "",
+        notes: ing.notes || "",
+        isSelected: false,
+      })),
+      instructions: recipeJson.instructions || [],
+      servings: recipeJson.servings || 4,
+      prepTime: recipeJson.prepTime || recipeJson.prep_time || 0,
+      cookTime: recipeJson.cookTime || recipeJson.cook_time || 0,
+      difficulty: (recipeJson.difficulty || "medium").toLowerCase(),
+      nutrition,
+      recipeImages: [],
+    };
+
+    return NextResponse.json(recipe);
   } catch (error: any) {
     console.error("Recipe generation error:", error);
     return NextResponse.json(
