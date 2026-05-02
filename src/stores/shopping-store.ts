@@ -169,6 +169,7 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         data: { session },
       } = await supabase.auth.getSession();
       if (!session?.user) {
+        alert("DEBUG +1: Nicht eingeloggt (keine Session)");
         set({ isLoading: false });
         return;
       }
@@ -178,6 +179,7 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         (i) => i.recipeId === recipeId && !i.isChecked
       );
       if (existingItems.length === 0) {
+        alert("DEBUG +1: Keine unchecked Items für recipeId=" + recipeId + " gefunden. Total items im Store: " + get().items.length);
         set({ isLoading: false });
         return;
       }
@@ -209,7 +211,7 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
 
       if (!res.ok) {
         const errText = await res.text();
-        console.error("addRecipeBatch API error:", errText);
+        alert("DEBUG +1: API Error " + res.status + ": " + errText);
         set({ isLoading: false });
         return;
       }
@@ -224,14 +226,14 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
           const allItems = [...state.items, ...shoppingItems];
           return { items: allItems, isLoading: false, ...deriveState(allItems) };
         });
+        alert("DEBUG +1: OK — " + inserted.length + " Items eingefügt");
       } else {
-        // Fallback: Komplette Liste neu laden wenn API keine Items zurückgibt
+        alert("DEBUG +1: API ok aber keine Items zurück. Response: " + JSON.stringify(resJson).slice(0, 200));
         set({ isLoading: false });
         get().loadShoppingList();
       }
     } catch (err: any) {
-      console.error("addRecipeBatch error:", err);
-      // Fallback: Liste neu laden
+      alert("DEBUG +1: Exception: " + (err?.message || String(err)));
       set({ isLoading: false });
       get().loadShoppingList();
     }
@@ -241,11 +243,17 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
   removeAllRecipeItems: async (recipeId) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
+      if (!session?.user) {
+        alert("DEBUG Löschen: Nicht eingeloggt (keine Session)");
+        return;
+      }
 
       const allItems = get().items.filter((i) => i.recipeId === recipeId);
       const ids = allItems.map((i) => i.id);
-      if (ids.length === 0) return;
+      if (ids.length === 0) {
+        alert("DEBUG Löschen: Keine Items für recipeId=" + recipeId + " gefunden. Total items: " + get().items.length);
+        return;
+      }
 
       // Optimistic Update
       set((state) => {
@@ -260,14 +268,19 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       });
 
       if (!res.ok) {
+        const errText = await res.text();
+        alert("DEBUG Löschen: API Error " + res.status + ": " + errText);
         // Rollback
         set((state) => {
           const restored = [...state.items, ...allItems];
           return { items: restored, ...deriveState(restored) };
         });
+      } else {
+        const resJson = await res.json();
+        alert("DEBUG Löschen: OK — " + (resJson?.deleted || 0) + " Items gelöscht");
       }
-    } catch {
-      // silent
+    } catch (err: any) {
+      alert("DEBUG Löschen: Exception: " + (err?.message || String(err)));
     }
   },
 
@@ -275,10 +288,20 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
     set({ isLoading: true });
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("Not authenticated");
+      if (!session?.user) {
+        alert("DEBUG -1: Nicht eingeloggt (keine Session)");
+        set({ isLoading: false });
+        return;
+      }
 
       // Alle Items für dieses Rezept holen, nach Timestamp gruppieren
       const allItems = get().items.filter((i) => i.recipeId === recipeId && !i.isChecked);
+      if (allItems.length === 0) {
+        alert("DEBUG -1: Keine unchecked Items für recipeId=" + recipeId);
+        set({ isLoading: false });
+        return;
+      }
+
       const timestampGroups: Record<string, ShoppingItem[]> = {};
       for (const item of allItems) {
         const ts = item.createdAt?.slice(0, 19) || "unknown";
@@ -296,13 +319,22 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         idsToDelete = newestBatchItems.map((i) => i.id);
       }
 
+      alert("DEBUG -1: " + batches.length + " Batches, lösche " + idsToDelete.length + " Items");
+
       if (idsToDelete.length > 0) {
         const res = await fetch("/api/shopping/batch-delete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ids: idsToDelete, userId: session.user.id }),
         });
-        if (!res.ok) throw new Error("Delete failed");
+        if (!res.ok) {
+          const errText = await res.text();
+          alert("DEBUG -1: API Error " + res.status + ": " + errText);
+          set({ isLoading: false });
+          return;
+        }
+        const resJson = await res.json();
+        alert("DEBUG -1: OK — " + (resJson?.deleted || 0) + " gelöscht");
       }
 
       // State aktualisieren
@@ -316,6 +348,7 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         return { items: remaining, isLoading: false, ...deriveState(remaining) };
       });
     } catch (err: any) {
+      alert("DEBUG -1: Exception: " + (err?.message || String(err)));
       set({ isLoading: false });
     }
   },
