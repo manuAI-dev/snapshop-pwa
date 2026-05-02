@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     // Nur Items löschen die dem User gehören
     const { data: items } = await supabaseAdmin
       .from("shopping_items")
-      .select("id, user_id, household_id")
+      .select("id, user_id")
       .in("id", ids);
 
     if (!items || items.length === 0) {
