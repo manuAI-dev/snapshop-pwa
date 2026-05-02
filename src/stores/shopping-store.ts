@@ -117,6 +117,12 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
 
       if (error) throw error;
 
+      // DEBUG: Zeige user_id Vergleich
+      if (items && items.length > 0) {
+        const dbUserIds = [...new Set(items.map((i: any) => i.user_id))];
+        console.log("DEBUG loadShoppingList: auth.user.id=" + user.id + ", DB user_ids=", dbUserIds, ", items=" + items.length);
+      }
+
       const shoppingItems = (items || []).map(dbToShoppingItem);
       set({ items: shoppingItems, isLoading: false, ...deriveState(shoppingItems) });
     } catch (err: any) {
@@ -128,7 +134,11 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
     set({ isLoading: true });
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) throw new Error("Not authenticated");
+      if (!session?.user) {
+        alert("DEBUG addRecipe: Nicht eingeloggt (keine Session)");
+        set({ isLoading: false });
+        return;
+      }
 
       // Convert ingredients to shopping items
       const itemsToInsert = (recipe.ingredients || []).map((ing) => ({
@@ -141,12 +151,25 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         recipe_name: recipe.dishName,
       }));
 
+      if (itemsToInsert.length === 0) {
+        alert("DEBUG addRecipe: Keine Zutaten im Rezept '" + recipe.dishName + "' (recipe.ingredients leer)");
+        set({ isLoading: false });
+        return;
+      }
+
+      alert("DEBUG addRecipe: Sende " + itemsToInsert.length + " Zutaten, userId=" + session.user.id.slice(0, 8) + "..., recipeId=" + recipe.id);
+
       const res = await fetch("/api/shopping/batch-add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ items: itemsToInsert, userId: session.user.id }),
       });
-      if (!res.ok) throw new Error("Insert failed");
+      if (!res.ok) {
+        const errText = await res.text();
+        alert("DEBUG addRecipe: API Error " + res.status + ": " + errText);
+        set({ isLoading: false });
+        return;
+      }
 
       const { items: inserted } = await res.json();
       const shoppingItems = (inserted || []).map(dbToShoppingItem);
@@ -154,7 +177,9 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         const allItems = [...state.items, ...shoppingItems];
         return { items: allItems, isLoading: false, ...deriveState(allItems) };
       });
+      alert("DEBUG addRecipe: OK — " + (inserted?.length || 0) + " Items eingefügt");
     } catch (err: any) {
+      alert("DEBUG addRecipe: Exception: " + (err?.message || String(err)));
       set({ isLoading: false });
     }
   },

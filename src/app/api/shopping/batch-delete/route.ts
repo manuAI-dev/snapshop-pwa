@@ -41,7 +41,15 @@ export async function POST(req: NextRequest) {
       .map((item: any) => item.id);
 
     if (safeIds.length === 0) {
-      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+      // DEBUG: Zeige user_id Mismatch Details
+      const dbUserIds = [...new Set(items.map((item: any) => item.user_id))];
+      console.error("batch-delete 403: sentUserId=", userId, "dbUserIds=", dbUserIds);
+      return NextResponse.json({
+        error: "Not authorized",
+        debug_sentUserId: userId,
+        debug_dbUserIds: dbUserIds,
+        debug_itemCount: items.length,
+      }, { status: 403 });
     }
 
     const { error } = await supabaseAdmin
