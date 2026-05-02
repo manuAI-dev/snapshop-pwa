@@ -471,14 +471,13 @@ export const useRecipeStore = create<RecipeStore>()(
         body: formData,
       });
 
-      if (!response.ok) {
-        let errMsg = "Rezepterkennung fehlgeschlagen";
-        try { const errData = await response.json(); errMsg = errData.error || errMsg; } catch {}
-        throw new Error(`API ${response.status}: ${errMsg}`);
-      }
-
       step = "parse-json";
-      const recipe: Recipe = await response.json();
+      // Streaming-Response: Text lesen, Keepalive-Newlines trimmen, JSON parsen
+      const responseText = (await response.text()).trim();
+      if (!responseText) throw new Error("Leere Antwort vom Server");
+
+      const recipe: Recipe = JSON.parse(responseText);
+      if ((recipe as any).error) throw new Error((recipe as any).error);
       // Auto-add the scan image(s) as recipe images
       if (previews.length > 0) {
         const existing = recipe.recipeImages || [];
@@ -563,12 +562,12 @@ export const useRecipeStore = create<RecipeStore>()(
         body: JSON.stringify({ url, pageText }),
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Rezept-Import fehlgeschlagen");
-      }
+      // Streaming-Response: Text lesen, Keepalive-Newlines trimmen, JSON parsen
+      const responseText = (await response.text()).trim();
+      if (!responseText) throw new Error("Leere Antwort vom Server");
 
-      const recipe: Recipe = await response.json();
+      const recipe: Recipe = JSON.parse(responseText);
+      if ((recipe as any).error) throw new Error((recipe as any).error);
       // Add extracted image URL to recipe if available
       if (extractedImageUrl) {
         const existing = recipe.recipeImages || [];
@@ -647,12 +646,12 @@ export const useRecipeStore = create<RecipeStore>()(
         body: formData,
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Restaurant-Erkennung fehlgeschlagen");
-      }
+      // Streaming-Response: Text lesen, Keepalive-Newlines trimmen, JSON parsen
+      const responseText = (await response.text()).trim();
+      if (!responseText) throw new Error("Leere Antwort vom Server");
 
-      const recipe: Recipe = await response.json();
+      const recipe: Recipe = JSON.parse(responseText);
+      if ((recipe as any).error) throw new Error((recipe as any).error);
       if (previews.length > 0) {
         const existing = recipe.recipeImages || [];
         recipe.recipeImages = [...previews, ...existing];
