@@ -127,16 +127,13 @@ WICHTIG:
 - NICHTS umrechnen, NICHTS umformulieren, NICHTS weglassen. Exakte Wiedergabe des Originaltextes.
 - Nährwerte PRO PORTION: Wenn im JSON-LD vorhanden, exakte Werte übernehmen. Sonst schätzen.`;
 
-// Edge Runtime: 50s Timeout auf Netlify (statt 10s bei Node Functions)
-export const runtime = "edge";
+// Kein Edge Runtime — wir pipen den Anthropic-Stream direkt zum Client durch.
+// Erste Bytes kommen in 2-3s an → Netlify bricht nicht ab.
 
 export async function POST(request: NextRequest) {
   if (!ANTHROPIC_API_KEY) {
     return NextResponse.json(
-      {
-        error:
-          "Anthropic API Key nicht konfiguriert. Bitte ANTHROPIC_API_KEY in .env.local setzen.",
-      },
+      { error: "Anthropic API Key nicht konfiguriert." },
       { status: 500 }
     );
   }
@@ -148,39 +145,23 @@ export async function POST(request: NextRequest) {
     let userContent: any[];
 
     if (contentType.includes("multipart/form-data")) {
-      // === Bild-Upload: Foto(s) → Rezept ===
       const formData = await request.formData();
       const imageFiles = formData.getAll("image") as File[];
-      const mode = (formData.get("mode") as string) || "recipe"; // "recipe" oder "restaurant"
+      const mode = (formData.get("mode") as string) || "recipe";
 
       if (!imageFiles || imageFiles.length === 0) {
-        return NextResponse.json(
-          { error: "Kein Bild hochgeladen" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Kein Bild hochgeladen" }, { status: 400 });
       }
-
-      // Alle Bilder zu Base64 konvertieren (Edge-kompatibel, kein Buffer)
-      const toBase64 = (buf: ArrayBuffer): string => {
-        const bytes = new Uint8Array(buf);
-        let binary = "";
-        const chunkSize = 0x8000; // 32KB Chunks für Performance
-        for (let i = 0; i < bytes.length; i += chunkSize) {
-          const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
-          binary += String.fromCharCode.apply(null, Array.from(chunk));
-        }
-        return btoa(binary);
-      };
 
       const imageBlocks: any[] = [];
       for (const imageFile of imageFiles) {
-        const base64 = toBase64(await imageFile.arrayBuffer());
-        const mediaType = imageFile.type || "image/jpeg";
+        const bytes = new Uint8Array(await imageFile.arrayBuffer());
+        const base64 = Buffer.from(bytes).toString("base64");
         imageBlocks.push({
           type: "image",
           source: {
             type: "base64",
-            media_type: mediaType,
+            media_type: imageFile.type || "image/jpeg",
             data: base64,
           },
         });
@@ -190,10 +171,7 @@ export async function POST(request: NextRequest) {
         systemPrompt = RECIPE_FROM_RESTAURANT_PROMPT;
         userContent = [
           ...imageBlocks,
-          {
-            type: "text",
-            text: "Dieses Foto zeigt ein Gericht aus einem Restaurant. Identifiziere das Gericht und erstelle ein detailliertes Rezept zum Nachkochen zuhause. Antworte im JSON-Format.",
-          },
+          { type: "text", text: "Dieses Foto zeigt ein Gericht aus einem Restaurant. Identifiziere das Gericht und erstelle ein detailliertes Rezept zum Nachkochen zuhause. Antworte im JSON-Format." },
         ];
       } else {
         systemPrompt = RECIPE_FROM_IMAGE_PROMPT;
@@ -203,40 +181,32 @@ export async function POST(request: NextRequest) {
           {
             type: "text",
             text: isMultiPage
-              ? `Diese ${imageFiles.length} Bilder zeigen verschiedene Seiten/Teile DESSELBEN Rezepts (z.B. aus einem Kochbuch). Kombiniere ALLE sichtbaren Informationen von ALLEN Seiten zu einem einzigen vollständigen Rezept. Generiere ein strukturiertes Rezept im JSON-Format.`
+              ? `Diese ${imageFiles.length} Bilder zeigen verschiedene Seiten/Teile DESSELBEN Rezepts. Kombiniere ALLE sichtbaren Informationen zu einem einzigen vollständigen Rezept im JSON-Format.`
               : "Analysiere dieses Bild und generiere ein strukturiertes Rezept im JSON-Format.",
           },
         ];
       }
     } else {
-      // === URL oder vorextrahierter Text → Rezept ===
       const body = await request.json();
       const { url, pageText } = body;
 
       if (!url && !pageText) {
-        return NextResponse.json(
-          { error: "Keine URL oder Seitentext angegeben" },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: "Keine URL oder Seitentext angegeben" }, { status: 400 });
       }
 
       let contentForAI: string;
 
       if (pageText) {
-        // Client hat den Seitentext bereits extrahiert (funktioniert für SPAs)
         contentForAI = pageText.substring(0, 40000);
       } else {
-        // Fallback: Server-side Fetch (funktioniert für statische Seiten)
         const pageResponse = await fetch(url, {
           headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
             "Accept": "text/html,application/xhtml+xml",
           },
         });
         const html = await pageResponse.text();
 
-        // Try to find JSON-LD structured data first (many recipe sites use this)
         const jsonLdMatch = html.match(/<script\s+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
         let jsonLdData = "";
         if (jsonLdMatch) {
@@ -245,7 +215,6 @@ export async function POST(request: NextRequest) {
           ).join("\n");
         }
 
-        // Strip HTML tags to get clean text
         const cleanText = html
           .replace(/<script[\s\S]*?<\/script>/gi, "")
           .replace(/<style[\s\S]*?<\/style>/gi, "")
@@ -262,15 +231,13 @@ export async function POST(request: NextRequest) {
 
       systemPrompt = RECIPE_FROM_URL_PROMPT;
       userContent = [
-        {
-          type: "text",
-          text: `Extrahiere das Rezept aus folgendem Seiteninhalt:\n\n${contentForAI}`,
-        },
+        { type: "text", text: `Extrahiere das Rezept aus folgendem Seiteninhalt:\n\n${contentForAI}` },
       ];
     }
 
-    // Anthropic API Call mit Streaming (sammelt Text serverseitig)
-    // Edge Runtime gibt uns 50s — mehr als genug für Claude
+    // Anthropic API mit stream:true aufrufen.
+    // fetch() returned sobald die Response-HEADERS da sind (~2-3s).
+    // Dann pipen wir den Body direkt zum Client durch → kein Timeout.
     const aiResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -290,100 +257,25 @@ export async function POST(request: NextRequest) {
 
     if (!aiResponse.ok) {
       let errMsg = "KI-Verarbeitung fehlgeschlagen";
-      let errType = "unknown";
       try {
         const errorData = await aiResponse.json();
         errMsg = errorData?.error?.message || errMsg;
-        errType = errorData?.error?.type || errType;
       } catch { /* ignore */ }
-      console.error("Anthropic API Error:", aiResponse.status, errMsg);
-      return NextResponse.json(
-        { error: `API Fehler: ${errMsg} (${errType}, Status ${aiResponse.status})` },
-        { status: aiResponse.status }
-      );
+      return NextResponse.json({ error: errMsg }, { status: aiResponse.status });
     }
 
-    // SSE-Stream lesen, Text sammeln
-    const reader = aiResponse.body?.getReader();
-    if (!reader) {
-      return NextResponse.json({ error: "Kein Response-Stream von Anthropic" }, { status: 500 });
+    // Stream direkt durchpipen — erste Bytes sofort beim Client
+    if (!aiResponse.body) {
+      return NextResponse.json({ error: "Kein Stream von API" }, { status: 500 });
     }
 
-    const decoder = new TextDecoder();
-    let fullText = "";
-    let sseBuffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      sseBuffer += decoder.decode(value, { stream: true });
-      const lines = sseBuffer.split("\n");
-      sseBuffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const jsonStr = line.slice(6).trim();
-        if (jsonStr === "[DONE]") continue;
-        try {
-          const event = JSON.parse(jsonStr);
-          if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-            fullText += event.delta.text;
-          }
-        } catch { /* skip unparseable SSE lines */ }
-      }
-    }
-
-    if (!fullText) {
-      return NextResponse.json(
-        { error: "Keine Antwort von der KI erhalten" },
-        { status: 500 }
-      );
-    }
-
-    // JSON aus der Antwort parsen
-    let jsonString = fullText.trim();
-    const jsonMatch = jsonString.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) jsonString = jsonMatch[1].trim();
-
-    const recipeJson = JSON.parse(jsonString);
-
-    // Normalisieren
-    const rawNutrition = recipeJson.nutrition;
-    const nutrition = rawNutrition
-      ? {
-          calories: Math.round(Number(rawNutrition.calories) || 0),
-          protein: Math.round(Number(rawNutrition.protein) || 0),
-          fat: Math.round(Number(rawNutrition.fat) || 0),
-          carbs: Math.round(Number(rawNutrition.carbs) || 0),
-          fiber: Math.round(Number(rawNutrition.fiber) || 0),
-          sugar: Math.round(Number(rawNutrition.sugar) || 0),
-        }
-      : undefined;
-
-    const recipe = {
-      dishName: recipeJson.dishName || recipeJson.dish_name || "Unbekanntes Rezept",
-      cuisine: recipeJson.cuisine || "International",
-      description: recipeJson.description || "",
-      ingredients: (recipeJson.ingredients || []).map((ing: any) => ({
-        name: ing.name || "",
-        quantity: String(ing.quantity || ""),
-        unit: ing.unit || "",
-        category: ing.category || "other",
-        group: ing.group || "",
-        notes: ing.notes || "",
-        isSelected: false,
-      })),
-      instructions: recipeJson.instructions || [],
-      servings: recipeJson.servings || 4,
-      prepTime: recipeJson.prepTime || recipeJson.prep_time || 0,
-      cookTime: recipeJson.cookTime || recipeJson.cook_time || 0,
-      difficulty: (recipeJson.difficulty || "medium").toLowerCase(),
-      nutrition,
-      recipeImages: [],
-    };
-
-    return NextResponse.json(recipe);
+    return new Response(aiResponse.body, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
   } catch (error: any) {
     console.error("Recipe generation error:", error);
     return NextResponse.json(

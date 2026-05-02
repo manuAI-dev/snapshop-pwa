@@ -10,6 +10,87 @@ import { generateThumbnail } from "@/utils/compress-image";
 // IDs von Rezepten die gerade gelöscht werden — verhindert dass loadRecipes sie wieder zeigt
 const pendingDeletes = new Set<string>();
 
+// Helper: SSE-Stream von Anthropic lesen und Rezept-JSON parsen
+async function parseRecipeFromSSEStream(response: Response): Promise<Recipe> {
+  if (!response.ok) {
+    let errMsg = "Rezepterkennung fehlgeschlagen";
+    try { const errData = await response.json(); errMsg = errData.error || errMsg; } catch {}
+    throw new Error(`API ${response.status}: ${errMsg}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("Kein Response-Stream");
+
+  const decoder = new TextDecoder();
+  let fullText = "";
+  let sseBuffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    sseBuffer += decoder.decode(value, { stream: true });
+    const lines = sseBuffer.split("\n");
+    sseBuffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === "[DONE]") continue;
+      try {
+        const event = JSON.parse(jsonStr);
+        if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+          fullText += event.delta.text;
+        }
+      } catch { /* skip */ }
+    }
+  }
+
+  if (!fullText) throw new Error("Keine Antwort von der KI erhalten");
+
+  // JSON extrahieren (Claude wrappet manchmal in ```json...```)
+  let jsonString = fullText.trim();
+  const jsonMatch = jsonString.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (jsonMatch) jsonString = jsonMatch[1].trim();
+
+  const recipeJson = JSON.parse(jsonString);
+
+  // Normalisieren
+  const rawNutrition = recipeJson.nutrition;
+  const nutrition = rawNutrition
+    ? {
+        calories: Math.round(Number(rawNutrition.calories) || 0),
+        protein: Math.round(Number(rawNutrition.protein) || 0),
+        fat: Math.round(Number(rawNutrition.fat) || 0),
+        carbs: Math.round(Number(rawNutrition.carbs) || 0),
+        fiber: Math.round(Number(rawNutrition.fiber) || 0),
+        sugar: Math.round(Number(rawNutrition.sugar) || 0),
+      }
+    : undefined;
+
+  return {
+    dishName: recipeJson.dishName || recipeJson.dish_name || "Unbekanntes Rezept",
+    cuisine: recipeJson.cuisine || "International",
+    description: recipeJson.description || "",
+    ingredients: (recipeJson.ingredients || []).map((ing: any) => ({
+      name: ing.name || "",
+      quantity: String(ing.quantity || ""),
+      unit: ing.unit || "",
+      category: ing.category || "other",
+      group: ing.group || "",
+      notes: ing.notes || "",
+      isSelected: false,
+    })),
+    instructions: recipeJson.instructions || [],
+    servings: recipeJson.servings || 4,
+    prepTime: recipeJson.prepTime || recipeJson.prep_time || 0,
+    cookTime: recipeJson.cookTime || recipeJson.cook_time || 0,
+    difficulty: (recipeJson.difficulty || "medium").toLowerCase(),
+    nutrition,
+    recipeImages: [],
+  } as Recipe;
+}
+
 interface RecipeStore {
   recipes: Recipe[];
   currentRecipe: Recipe | null;
@@ -471,14 +552,8 @@ export const useRecipeStore = create<RecipeStore>()(
         body: formData,
       });
 
-      if (!response.ok) {
-        let errMsg = "Rezepterkennung fehlgeschlagen";
-        try { const errData = await response.json(); errMsg = errData.error || errMsg; } catch {}
-        throw new Error(`API ${response.status}: ${errMsg}`);
-      }
-
       step = "parse-json";
-      const recipe: Recipe = await response.json();
+      const recipe: Recipe = await parseRecipeFromSSEStream(response);
       // Auto-add the scan image(s) as recipe images
       if (previews.length > 0) {
         const existing = recipe.recipeImages || [];
@@ -563,12 +638,7 @@ export const useRecipeStore = create<RecipeStore>()(
         body: JSON.stringify({ url, pageText }),
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Rezept-Import fehlgeschlagen");
-      }
-
-      const recipe: Recipe = await response.json();
+      const recipe: Recipe = await parseRecipeFromSSEStream(response);
       // Add extracted image URL to recipe if available
       if (extractedImageUrl) {
         const existing = recipe.recipeImages || [];
@@ -647,12 +717,7 @@ export const useRecipeStore = create<RecipeStore>()(
         body: formData,
       });
 
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || "Restaurant-Erkennung fehlgeschlagen");
-      }
-
-      const recipe: Recipe = await response.json();
+      const recipe: Recipe = await parseRecipeFromSSEStream(response);
       if (previews.length > 0) {
         const existing = recipe.recipeImages || [];
         recipe.recipeImages = [...previews, ...existing];
