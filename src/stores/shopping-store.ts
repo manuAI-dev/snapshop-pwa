@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { Recipe, IngredientCategory, categoryLabels } from "@/types";
 import { ShoppingItem, ShoppingCategory, ShoppingRecipeGroup } from "@/types/shopping";
 import { supabase } from "@/lib/supabase";
-import { getUserHouseholdId } from "@/lib/utils";
+// getUserHouseholdId entfernt — household_id wird direkt als null gesendet (DB-Default)
 
 interface ShoppingStore {
   items: ShoppingItem[];
@@ -131,9 +131,8 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       if (!session?.user) throw new Error("Not authenticated");
 
       // Convert ingredients to shopping items
-      const householdId = await getUserHouseholdId();
       const itemsToInsert = (recipe.ingredients || []).map((ing) => ({
-        household_id: householdId,
+        household_id: null,
         name: ing.name,
         quantity: ing.quantity,
         unit: ing.unit,
@@ -164,12 +163,14 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
   // +1: Rezept-Zutaten nochmal hinzufügen basierend auf existierenden Shopping-Items
   // Nutzt API Route mit Service Role Key um RLS zu umgehen
   addRecipeBatch: async (recipeId) => {
+    // Sofort Loading-State setzen für visuelles Feedback
+    set({ isLoading: true });
     try {
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session?.user) {
-        alert("Fehler: Nicht eingeloggt. Bitte App neu starten.");
+        set({ isLoading: false });
         return;
       }
 
@@ -178,7 +179,7 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         (i) => i.recipeId === recipeId && !i.isChecked
       );
       if (existingItems.length === 0) {
-        alert("Keine Zutaten zum Verdoppeln gefunden.");
+        set({ isLoading: false });
         return;
       }
 
@@ -190,9 +191,10 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         return true;
       });
 
-      const householdId = await getUserHouseholdId();
+      // household_id: direkt null setzen, DB-Default greift
+      // Vermeidet langsamen getUserHouseholdId() → getUser() Netzwerk-Call
       const itemsToInsert = uniqueItems.map((item) => ({
-        household_id: householdId,
+        household_id: null,
         name: item.name,
         quantity: item.quantity || "",
         unit: item.unit || "",
@@ -212,19 +214,30 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       if (!res.ok) {
         const errText = await res.text();
         console.error("addRecipeBatch API error:", errText);
-        alert(`+1 Fehler: ${errText}`);
+        set({ isLoading: false });
         return;
       }
 
-      const { items: inserted } = await res.json();
-      const shoppingItems = (inserted || []).map(dbToShoppingItem);
-      set((state) => {
-        const allItems = [...state.items, ...shoppingItems];
-        return { items: allItems, ...deriveState(allItems) };
-      });
+      const resJson = await res.json();
+      const inserted = resJson?.items;
+
+      if (inserted && inserted.length > 0) {
+        // Optimistisch: Neue Items direkt zum State hinzufügen
+        const shoppingItems = inserted.map(dbToShoppingItem);
+        set((state) => {
+          const allItems = [...state.items, ...shoppingItems];
+          return { items: allItems, isLoading: false, ...deriveState(allItems) };
+        });
+      } else {
+        // Fallback: Komplette Liste neu laden wenn API keine Items zurückgibt
+        set({ isLoading: false });
+        get().loadShoppingList();
+      }
     } catch (err: any) {
       console.error("addRecipeBatch error:", err);
-      alert(`+1 Fehler: ${err?.message || "Unbekannt"}`);
+      // Fallback: Liste neu laden
+      set({ isLoading: false });
+      get().loadShoppingList();
     }
   },
 
@@ -317,14 +330,13 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("Not authenticated");
 
-      const householdId = await getUserHouseholdId();
       const res = await fetch("/api/shopping/batch-add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: session.user.id,
           items: [{
-            household_id: householdId,
+            household_id: null,
             name,
             quantity,
             unit,

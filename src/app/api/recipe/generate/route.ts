@@ -127,8 +127,8 @@ WICHTIG:
 - NICHTS umrechnen, NICHTS umformulieren, NICHTS weglassen. Exakte Wiedergabe des Originaltextes.
 - Nährwerte PRO PORTION: Wenn im JSON-LD vorhanden, exakte Werte übernehmen. Sonst schätzen.`;
 
-// Allow longer timeout for AI processing (60s)
-export const maxDuration = 60;
+// Edge Runtime: 50s Timeout auf Netlify (statt 10s bei Node Functions)
+export const runtime = "edge";
 
 export async function POST(request: NextRequest) {
   if (!ANTHROPIC_API_KEY) {
@@ -160,11 +160,21 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Alle Bilder zu Base64 konvertieren
+      // Alle Bilder zu Base64 konvertieren (Edge-kompatibel, kein Buffer)
+      const toBase64 = (buf: ArrayBuffer): string => {
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        const chunkSize = 0x8000; // 32KB Chunks für Performance
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+          binary += String.fromCharCode(...chunk);
+        }
+        return btoa(binary);
+      };
+
       const imageBlocks: any[] = [];
       for (const imageFile of imageFiles) {
-        const bytes = await imageFile.arrayBuffer();
-        const base64 = Buffer.from(bytes).toString("base64");
+        const base64 = toBase64(await imageFile.arrayBuffer());
         const mediaType = imageFile.type || "image/jpeg";
         imageBlocks.push({
           type: "image",
