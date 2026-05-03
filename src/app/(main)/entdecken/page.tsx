@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useFeedStore, FeedItem, AvailableSource } from "@/stores/feed-store";
 import { useRecipeStore } from "@/stores/recipe-store";
@@ -96,12 +96,12 @@ function SourceBadge({ name, color }: { name: string; color: string }) {
         display: "inline-flex",
         alignItems: "center",
         backgroundColor: "rgba(255,255,255,0.92)",
-        borderRadius: 6,
-        padding: "3px 8px",
+        borderRadius: 8,
+        padding: "4px 10px",
         backdropFilter: "blur(4px)",
       }}
     >
-      <span style={{ fontSize: 10, fontWeight: 700, color: color, letterSpacing: 0.2 }}>
+      <span style={{ fontSize: 11, fontWeight: 700, color: color, letterSpacing: 0.2 }}>
         {name}
       </span>
     </div>
@@ -109,7 +109,126 @@ function SourceBadge({ name, color }: { name: string; color: string }) {
 }
 
 // ============================================================
-// Preview Modal
+// Instagram-Style Feed Card
+// ============================================================
+
+function FeedCard({
+  item,
+  onClick,
+}: {
+  item: FeedItem;
+  onClick: () => void;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        borderRadius: 20,
+        overflow: "hidden",
+        backgroundColor: "white",
+        boxShadow: "0 2px 16px rgba(0,0,0,0.08)",
+        cursor: "pointer",
+        transition: "transform 0.2s, box-shadow 0.2s",
+      }}
+    >
+      {/* Large Image Area */}
+      <div style={{ position: "relative", width: "100%", aspectRatio: "4/3", overflow: "hidden" }}>
+        {item.imageUrl && !imgError ? (
+          <>
+            {/* Skeleton while loading */}
+            {!imgLoaded && (
+              <div style={{
+                position: "absolute", inset: 0,
+                background: `linear-gradient(135deg, ${item.sourceColor}22 0%, ${item.sourceColor}11 100%)`,
+                animation: "pulse 2s infinite",
+              }} />
+            )}
+            <img
+              src={item.imageUrl}
+              alt={item.title}
+              style={{
+                width: "100%", height: "100%", objectFit: "cover",
+                opacity: imgLoaded ? 1 : 0,
+                transition: "opacity 0.3s",
+              }}
+              loading="lazy"
+              decoding="async"
+              onLoad={() => setImgLoaded(true)}
+              onError={() => setImgError(true)}
+            />
+          </>
+        ) : (
+          <div style={{
+            width: "100%", height: "100%",
+            background: `linear-gradient(135deg, ${item.sourceColor} 0%, ${item.sourceColor}99 50%, #1a1a2e 100%)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5">
+              <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z" />
+              <line x1="6" y1="17" x2="18" y2="17" />
+            </svg>
+          </div>
+        )}
+
+        {/* Gradient overlay at bottom */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0, height: "50%",
+          background: "linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)",
+          pointerEvents: "none",
+        }} />
+
+        {/* Source Badge — top left */}
+        <div style={{ position: "absolute", top: 12, left: 12 }}>
+          <SourceBadge name={item.sourceName} color={item.sourceColor} />
+        </div>
+
+        {/* Title overlay — bottom */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "16px 16px 14px" }}>
+          <h3 style={{
+            fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.25,
+            fontFamily: "'Montserrat', sans-serif",
+            textShadow: "0 1px 4px rgba(0,0,0,0.3)",
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+          }}>
+            {item.title}
+          </h3>
+        </div>
+      </div>
+
+      {/* Bottom bar with tags + arrow */}
+      <div style={{
+        padding: "12px 16px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
+          {(item.tags || []).slice(0, 3).map((tag) => {
+            const filterOpt = FILTER_OPTIONS.find((f) => f.id === tag);
+            if (!filterOpt) return null;
+            return (
+              <span key={tag} style={{
+                padding: "3px 8px", borderRadius: 6,
+                backgroundColor: `${filterOpt.color}15`,
+                fontSize: 10, fontWeight: 600, color: filterOpt.color,
+                letterSpacing: 0.2,
+              }}>
+                {filterOpt.label}
+              </span>
+            );
+          })}
+        </div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#CDD0D8" strokeWidth="2">
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Preview Modal (Bottom Sheet)
 // ============================================================
 
 function PreviewModal({ onSaved }: { onSaved: (recipeId: string) => void }) {
@@ -129,7 +248,6 @@ function PreviewModal({ onSaved }: { onSaved: (recipeId: string) => void }) {
   if (!previewItem) return null;
 
   const handleSave = async () => {
-    // Gate: recipeImport (AI-Import) + recipeStore (Rezept-Limit)
     if (!useFeature("recipeImport")) return;
     if (!checkGate("recipeStore", recipes.length).allowed) {
       useFeature("recipeStore");
@@ -183,13 +301,12 @@ function PreviewModal({ onSaved }: { onSaved: (recipeId: string) => void }) {
           )}
         </div>
 
-        {/* Title + Buttons (always visible, sticky) */}
+        {/* Title + Buttons */}
         <div style={{ padding: "16px 20px 12px", flexShrink: 0, borderBottom: "1px solid #F0F0F0" }}>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: "#212022", marginBottom: 12, fontFamily: "'Montserrat', sans-serif", lineHeight: 1.25 }}>
             {title}
           </h2>
 
-          {/* Buttons */}
           <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={() => window.open(previewItem.sourceUrl, "_blank")}
@@ -232,7 +349,6 @@ function PreviewModal({ onSaved }: { onSaved: (recipeId: string) => void }) {
 
           {previewData && (
             <>
-              {/* Meta pills */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
                 {previewData.totalTime && (
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 20, backgroundColor: "#FEF1E8", fontSize: 12, fontWeight: 600, color: "#F2894F" }}>
@@ -280,7 +396,7 @@ function PreviewModal({ onSaved }: { onSaved: (recipeId: string) => void }) {
 }
 
 // ============================================================
-// Main Page
+// Main Page — Instagram-Style Vertical Feed
 // ============================================================
 
 export default function EntdeckenPage() {
@@ -293,6 +409,10 @@ export default function EntdeckenPage() {
   const { loadRecipes } = useRecipeStore();
   const displayItems = filteredItems();
 
+  // Infinite scroll: show items in batches
+  const [visibleCount, setVisibleCount] = useState(8);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     loadEnabledSources();
   }, [loadEnabledSources]);
@@ -301,6 +421,27 @@ export default function EntdeckenPage() {
     if (enabledSources.length > 0) loadFeed();
   }, [enabledSources, loadFeed]);
 
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(8);
+  }, [activeFilters, enabledSources]);
+
+  // Intersection observer for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => Math.min(prev + 6, displayItems.length));
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, [displayItems.length]);
+
   const handleCardClick = useCallback((item: FeedItem) => openPreview(item), [openPreview]);
 
   const handleRecipeSaved = useCallback((recipeId: string) => {
@@ -308,9 +449,11 @@ export default function EntdeckenPage() {
     router.push(`/rezepte/${recipeId}`);
   }, [loadRecipes, router]);
 
+  const visibleItems = displayItems.slice(0, visibleCount);
+
   return (
     <div style={{ backgroundColor: "#FFF3EB", minHeight: "100vh", paddingBottom: 90 }}>
-      {/* Header with Logo + Account */}
+      {/* Header */}
       <AppHeader title="Entdecken" subtitle="Rezeptideen aus deinen Lieblingsquellen" />
 
       {/* Source Toggle Chips */}
@@ -350,12 +493,24 @@ export default function EntdeckenPage() {
         )}
       </div>
 
-      {/* Feed Grid */}
-      <div style={{ padding: "0 20px" }}>
+      {/* Recipe count */}
+      {!isLoading && !error && displayItems.length > 0 && (
+        <div style={{ padding: "0 20px", marginBottom: 12 }}>
+          <span style={{ fontSize: 12, color: "#9193A0", fontWeight: 500 }}>
+            {displayItems.length} Rezepte
+          </span>
+        </div>
+      )}
+
+      {/* Feed — Instagram-Style vertical cards */}
+      <div style={{ padding: "0 16px" }}>
         {isLoading ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} style={{ height: 200, backgroundColor: "#FCF7F2", borderRadius: 16, animation: "pulse 2s infinite" }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {[1, 2, 3].map((i) => (
+              <div key={i} style={{
+                height: 260, backgroundColor: "#FCF7F2", borderRadius: 20,
+                animation: "pulse 2s infinite",
+              }} />
             ))}
           </div>
         ) : error ? (
@@ -383,52 +538,34 @@ export default function EntdeckenPage() {
             )}
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {displayItems.map((item) => (
-              <div
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {visibleItems.map((item) => (
+              <FeedCard
                 key={item.id}
+                item={item}
                 onClick={() => handleCardClick(item)}
-                style={{ borderRadius: 16, overflow: "hidden", backgroundColor: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", cursor: "pointer" }}
-              >
-                {/* Image */}
-                <div style={{ position: "relative", height: 130 }}>
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      loading="lazy"
-                      onError={(e) => {
-                        // Hide broken images gracefully
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = "none";
-                        if (target.parentElement) {
-                          target.parentElement.style.background = `linear-gradient(135deg, ${item.sourceColor} 0%, #333 100%)`;
-                        }
-                      }}
-                    />
-                  ) : (
-                    <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${item.sourceColor} 0%, #333 100%)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z" /><line x1="6" y1="17" x2="18" y2="17" /></svg>
-                    </div>
-                  )}
-                  <div style={{ position: "absolute", top: 6, left: 6 }}>
-                    <SourceBadge name={item.sourceName} color={item.sourceColor} />
-                  </div>
-                </div>
-
-                {/* Title */}
-                <div style={{ padding: "10px 10px 12px" }}>
-                  <h3 style={{
-                    fontSize: 13, fontWeight: 700, color: "#212022", lineHeight: 1.3,
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                    display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-                  }}>
-                    {item.title}
-                  </h3>
-                </div>
-              </div>
+              />
             ))}
+
+            {/* Infinite scroll sentinel */}
+            {visibleCount < displayItems.length && (
+              <div ref={sentinelRef} style={{ display: "flex", justifyContent: "center", padding: "20px 0" }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: "50%",
+                  border: "3px solid #FEF1E8", borderTopColor: "#F2894F",
+                  animation: "spin 1s linear infinite",
+                }} />
+              </div>
+            )}
+
+            {/* End of feed */}
+            {visibleCount >= displayItems.length && displayItems.length > 6 && (
+              <div style={{ textAlign: "center", padding: "16px 0 8px" }}>
+                <p style={{ fontSize: 12, color: "#CDD0D8" }}>
+                  Das waren alle {displayItems.length} Rezepte
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -437,6 +574,7 @@ export default function EntdeckenPage() {
 
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes spin { to { transform: rotate(360deg) } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
