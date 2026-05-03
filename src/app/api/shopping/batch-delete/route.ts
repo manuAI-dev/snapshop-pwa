@@ -26,18 +26,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Nur Items löschen die dem User gehören
+    // Items aus DB holen + Zugehörigkeit prüfen
     const { data: items } = await supabaseAdmin
       .from("shopping_items")
-      .select("id, user_id")
+      .select("id, user_id, household_id")
       .in("id", ids);
 
     if (!items || items.length === 0) {
       return NextResponse.json({ success: true, deleted: 0 });
     }
 
+    // User darf eigene Items löschen ODER Items aus seinem Haushalt
+    // Zuerst: Haushalt des Users ermitteln (aus einem seiner Items oder Profil)
+    const { data: userItems } = await supabaseAdmin
+      .from("shopping_items")
+      .select("household_id")
+      .eq("user_id", userId)
+      .limit(1);
+    const userHouseholdId = userItems?.[0]?.household_id || null;
+
     const safeIds = items
-      .filter((item: any) => item.user_id === userId)
+      .filter((item: any) => {
+        // Direkt: Item gehört dem User
+        if (item.user_id === userId) return true;
+        // Haushalt: Item gehört zum selben Haushalt
+        if (userHouseholdId && item.household_id && item.household_id === userHouseholdId) return true;
+        return false;
+      })
       .map((item: any) => item.id);
 
     if (safeIds.length === 0) {
