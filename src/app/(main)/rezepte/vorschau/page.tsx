@@ -54,7 +54,7 @@ export default function RecipePreviewPage() {
   };
 
   return (
-    <div className="pb-6" style={{ backgroundColor: '#FFF3EB', minHeight: '100vh' }}>
+    <div style={{ backgroundColor: '#FFF3EB', minHeight: '100vh', paddingBottom: 100 }}>
       {/* Back Button */}
       <div className="px-5 pt-14 pb-3">
         <button

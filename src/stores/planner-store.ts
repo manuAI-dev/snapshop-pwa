@@ -229,7 +229,7 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
           household_id: householdId,
           recipe_id: m.recipeId || `ai_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           recipe_name: m.recipeName,
-          recipe_image: matched?.recipeImages?.[0] || feedMatch?.imageUrl || null,
+          recipe_image: matched?.thumbnail || matched?.recipeImages?.[0] || feedMatch?.imageUrl || null,
           _sourceUrl: matched ? null : (feedMatch?.sourceUrl || null),
           _sourceName: matched ? null : (feedMatch?.source || null),
           date: m.date,

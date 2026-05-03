@@ -202,14 +202,14 @@ export default function KalenderPage() {
 
   const handleSelectRecipe = (recipe: Recipe) => {
     if (!selectedDate) return;
-    addMeal(recipe.id || Date.now().toString(), recipe.dishName, recipe.recipeImages?.[0], selectedDate, "abendessen" as MealType, recipe.servings);
+    addMeal(recipe.id || Date.now().toString(), recipe.dishName, recipe.thumbnail || recipe.recipeImages?.[0], selectedDate, "abendessen" as MealType, recipe.servings);
     setShowPicker(false);
     setSelectedDate("");
   };
 
   const openPicker = (date: string) => {
     if (pendingRecipe) {
-      addMeal(pendingRecipe.id || Date.now().toString(), pendingRecipe.dishName, pendingRecipe.recipeImages?.[0], date, "abendessen" as MealType, pendingRecipe.servings);
+      addMeal(pendingRecipe.id || Date.now().toString(), pendingRecipe.dishName, pendingRecipe.thumbnail || pendingRecipe.recipeImages?.[0], date, "abendessen" as MealType, pendingRecipe.servings);
       setJustAdded(date);
       router.replace("/kalender", { scroll: false });
       setTimeout(() => setJustAdded(null), 2000);
@@ -261,8 +261,8 @@ export default function KalenderPage() {
           background: 'linear-gradient(135deg, #F2894F 0%, #E67A3C 100%)',
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          {pendingRecipe.recipeImages?.[0] && (
-            <img loading="lazy" decoding="async" src={pendingRecipe.recipeImages[0]} alt="" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
+          {(pendingRecipe.thumbnail || pendingRecipe.recipeImages?.[0]) && (
+            <img loading="lazy" decoding="async" src={pendingRecipe.thumbnail || pendingRecipe.recipeImages[0]} alt="" style={{ width: 40, height: 40, borderRadius: 10, objectFit: 'cover' }} />
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: 'white', fontFamily: "'Montserrat', sans-serif", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1139,7 +1139,7 @@ function RecipePicker({ recipes, selectedDate, onSelect, onClose }: {
                 }}
               >
                 <div style={{ width: 56, height: 56, borderRadius: 12, overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, #F2894F, #CC3D10)' }}>
-                  {recipe.recipeImages?.[0] && <img loading="lazy" decoding="async" src={recipe.recipeImages[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  {(recipe.thumbnail || recipe.recipeImages?.[0]) && <img loading="lazy" decoding="async" src={recipe.thumbnail || recipe.recipeImages[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 600, color: '#462F4D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
