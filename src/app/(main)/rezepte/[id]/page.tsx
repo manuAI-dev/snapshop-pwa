@@ -105,9 +105,9 @@ export default function RecipeDetailPage() {
       await loadRecipeDetail(recipeToUse.id!);
       // Aktualisiertes Rezept aus dem Store holen
       const store = useRecipeStore.getState();
-      recipeToUse = store.currentRecipe?.id === recipeToUse.id
-        ? store.currentRecipe
-        : store.recipes.find((r) => r.id === recipeToUse.id) || recipeToUse;
+      const fromStore = (store.currentRecipe?.id === recipeToUse.id ? store.currentRecipe : null)
+        || store.recipes.find((r) => r.id === recipeToUse.id);
+      if (fromStore) recipeToUse = fromStore;
 
       if (!recipeToUse.ingredients || recipeToUse.ingredients.length === 0) {
         alert("Rezept hat keine Zutaten — bitte versuche es erneut.");
