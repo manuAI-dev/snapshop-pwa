@@ -237,9 +237,33 @@ export const useRecipeStore = create<RecipeStore>()(
       if (error) throw error;
 
       // pendingDeletes rausfiltern — verhindert dass gelöschte Rezepte wieder auftauchen
-      const recipeList: Recipe[] = (recipes || [])
+      const freshList: Recipe[] = (recipes || [])
         .filter(r => !pendingDeletes.has(r.id))
         .map(dbToRecipeLight);
+
+      // Merge: Falls ein Rezept schon Detail-Daten hat (ingredients/instructions),
+      // diese NICHT mit leeren Light-Daten überschreiben
+      const existingRecipes = get().recipes;
+      const recipeList = freshList.map((light) => {
+        const existing = existingRecipes.find((r) => r.id === light.id);
+        if (existing && existing.ingredients.length > 0) {
+          // Detail-Daten behalten, nur Listenfelder aktualisieren
+          return {
+            ...existing,
+            dishName: light.dishName,
+            cuisine: light.cuisine,
+            description: light.description,
+            servings: light.servings,
+            prepTime: light.prepTime,
+            cookTime: light.cookTime,
+            difficulty: light.difficulty,
+            rating: light.rating,
+            isFavorite: light.isFavorite,
+            thumbnail: light.thumbnail,
+          };
+        }
+        return light;
+      });
       set({ recipes: recipeList, isLoading: false });
 
       // Einmaliger Reset: Thumbnails neu generieren (v4 = URL-safe + CORS fix)

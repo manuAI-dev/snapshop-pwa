@@ -97,10 +97,27 @@ export default function RecipeDetailPage() {
 
   const multiplier = servings / (recipe.servings || 1);
 
-  const handleAddToShoppingList = () => {
+  const handleAddToShoppingList = async () => {
+    let recipeToUse = recipe;
+
+    // Falls Zutaten noch nicht geladen (Light-Version), erst Detail nachladen
+    if (!recipeToUse.ingredients || recipeToUse.ingredients.length === 0) {
+      await loadRecipeDetail(recipeToUse.id!);
+      // Aktualisiertes Rezept aus dem Store holen
+      const store = useRecipeStore.getState();
+      recipeToUse = store.currentRecipe?.id === recipeToUse.id
+        ? store.currentRecipe
+        : store.recipes.find((r) => r.id === recipeToUse.id) || recipeToUse;
+
+      if (!recipeToUse.ingredients || recipeToUse.ingredients.length === 0) {
+        alert("Rezept hat keine Zutaten — bitte versuche es erneut.");
+        return;
+      }
+    }
+
     const adjustedRecipe: Recipe = {
-      ...recipe,
-      ingredients: recipe.ingredients.map((ing) => ({
+      ...recipeToUse,
+      ingredients: recipeToUse.ingredients.map((ing) => ({
         ...ing,
         quantity: multiplier !== 1 ? adjustQuantity(ing.quantity, multiplier) : ing.quantity,
       })),
