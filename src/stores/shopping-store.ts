@@ -4,11 +4,40 @@ import { create } from "zustand";
 import { Recipe, IngredientCategory, categoryLabels } from "@/types";
 import { ShoppingItem, ShoppingCategory, ShoppingRecipeGroup } from "@/types/shopping";
 import { supabase } from "@/lib/supabase";
-// getUserHouseholdId entfernt — household_id wird direkt als null gesendet (DB-Default)
 
+// ─── Quantity Helpers ────────────────────────────────────────
+// Parst "1", "1.5", "1,5", "1/2", "200" → Zahl
+function parseQty(str: string): number {
+  if (!str) return 0;
+  str = str.trim();
+  // Brüche: "1/2", "3/4"
+  if (str.includes("/")) {
+    const parts = str.split("/");
+    const num = parseFloat(parts[0]);
+    const den = parseFloat(parts[1]);
+    if (!isNaN(num) && !isNaN(den) && den !== 0) return num / den;
+  }
+  // Komma → Punkt
+  str = str.replace(",", ".");
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
+}
+
+// Zahl → schöner String: 2 → "2", 1.5 → "1.5", 0.333 → "⅓"
+function formatQty(num: number): string {
+  if (num === 0) return "";
+  if (Number.isInteger(num)) return String(num);
+  // Max 2 Dezimalstellen, trailing zeros entfernen
+  return String(Math.round(num * 100) / 100);
+}
+
+// ─── Store Types ─────────────────────────────────────────────
 interface ShoppingStore {
   items: ShoppingItem[];
   isLoading: boolean;
+
+  // batchCount pro Rezept (wie oft das Rezept in der Liste ist)
+  recipeBatchCounts: Record<string, number>;
 
   // Abgeleitete Daten
   categories: ShoppingCategory[];
@@ -30,7 +59,7 @@ interface ShoppingStore {
   clearList: () => void;
 }
 
-// Helper: Convert DB row to ShoppingItem
+// ─── Helpers ─────────────────────────────────────────────────
 function dbToShoppingItem(row: any): ShoppingItem {
   return {
     id: row.id,
@@ -46,7 +75,7 @@ function dbToShoppingItem(row: any): ShoppingItem {
   };
 }
 
-function deriveState(items: ShoppingItem[]) {
+function deriveState(items: ShoppingItem[], recipeBatchCounts: Record<string, number>) {
   const uncheckedItems = items.filter((i) => !i.isChecked);
   const checkedItems = items.filter((i) => i.isChecked);
   const customItems = items.filter((i) => !i.recipeId);
@@ -59,14 +88,14 @@ function deriveState(items: ShoppingItem[]) {
     catMap[cat].push(item);
   }
   const categories: ShoppingCategory[] = Object.entries(catMap)
-    .map(([category, items]) => ({
+    .map(([category, catItems]) => ({
       category: category as IngredientCategory,
       label: categoryLabels[category as IngredientCategory] || "Sonstiges",
-      items,
+      items: catItems,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
-  // Nach Rezept gruppieren (nur unchecked) + Batch-Count berechnen
+  // Nach Rezept gruppieren (nur unchecked)
   const recipeMap: Record<string, ShoppingItem[]> = {};
   for (const item of uncheckedItems) {
     if (item.recipeId) {
@@ -75,23 +104,21 @@ function deriveState(items: ShoppingItem[]) {
       recipeMap[key].push(item);
     }
   }
-  const recipeGroups: ShoppingRecipeGroup[] = Object.entries(recipeMap).map(([recipeId, items]) => {
-    // Batches erkennen: Distinct created_at Zeitstempel (selbe Sekunde = 1 Batch)
-    const timestamps = new Set(items.map((i) => i.createdAt?.slice(0, 19))); // bis Sekunde
-    return {
-      recipeId,
-      recipeName: items[0]?.recipeName || "Unbekannt",
-      items,
-      batchCount: Math.max(1, timestamps.size),
-    };
-  });
+  const recipeGroups: ShoppingRecipeGroup[] = Object.entries(recipeMap).map(([recipeId, rItems]) => ({
+    recipeId,
+    recipeName: rItems[0]?.recipeName || "Unbekannt",
+    items: rItems,
+    batchCount: recipeBatchCounts[recipeId] || 1,
+  }));
 
   return { categories, recipeGroups, uncheckedItems, checkedItems, customItems };
 }
 
+// ─── Store ───────────────────────────────────────────────────
 export const useShoppingStore = create<ShoppingStore>((set) => ({
   items: [],
   isLoading: false,
+  recipeBatchCounts: {},
   categories: [],
   recipeGroups: [],
   uncheckedItems: [],
@@ -101,15 +128,12 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
   loadShoppingList: async () => {
     set({ isLoading: true });
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        set({ items: [], isLoading: false, ...deriveState([]) });
+        set({ items: [], isLoading: false, recipeBatchCounts: {}, ...deriveState([], {}) });
         return;
       }
 
-      // RLS Policy zeigt automatisch eigene + Haushalt-Items
       const { data: items, error } = await supabase
         .from("shopping_items")
         .select("*")
@@ -117,14 +141,18 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
 
       if (error) throw error;
 
-      // DEBUG: Zeige user_id Vergleich
-      if (items && items.length > 0) {
-        const dbUserIds = Array.from(new Set(items.map((i: any) => i.user_id)));
-        console.log("DEBUG loadShoppingList: auth.user.id=" + user.id + ", DB user_ids=", dbUserIds, ", items=" + items.length);
+      const shoppingItems = (items || []).map(dbToShoppingItem);
+
+      // batchCounts initialisieren: aus bestehenden Counts übernehmen, Default = 1
+      const prevCounts = get().recipeBatchCounts;
+      const batchCounts: Record<string, number> = {};
+      for (const item of shoppingItems) {
+        if (item.recipeId && !batchCounts[item.recipeId]) {
+          batchCounts[item.recipeId] = prevCounts[item.recipeId] || 1;
+        }
       }
 
-      const shoppingItems = (items || []).map(dbToShoppingItem);
-      set({ items: shoppingItems, isLoading: false, ...deriveState(shoppingItems) });
+      set({ items: shoppingItems, isLoading: false, recipeBatchCounts: batchCounts, ...deriveState(shoppingItems, batchCounts) });
     } catch (err: any) {
       set({ isLoading: false });
     }
@@ -135,12 +163,10 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        alert("DEBUG addRecipe: Nicht eingeloggt (keine Session)");
         set({ isLoading: false });
         return;
       }
 
-      // Convert ingredients to shopping items
       const itemsToInsert = (recipe.ingredients || []).map((ing) => ({
         name: ing.name,
         quantity: ing.quantity,
@@ -152,12 +178,9 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       }));
 
       if (itemsToInsert.length === 0) {
-        alert("DEBUG addRecipe: Keine Zutaten im Rezept '" + recipe.dishName + "' (recipe.ingredients leer)");
         set({ isLoading: false });
         return;
       }
-
-      alert("DEBUG addRecipe: Sende " + itemsToInsert.length + " Zutaten, userId=" + session.user.id.slice(0, 8) + "..., recipeId=" + recipe.id);
 
       const res = await fetch("/api/shopping/batch-add", {
         method: "POST",
@@ -165,8 +188,6 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         body: JSON.stringify({ items: itemsToInsert, userId: session.user.id }),
       });
       if (!res.ok) {
-        const errText = await res.text();
-        alert("DEBUG addRecipe: API Error " + res.status + ": " + errText);
         set({ isLoading: false });
         return;
       }
@@ -175,115 +196,185 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       const shoppingItems = (inserted || []).map(dbToShoppingItem);
       set((state) => {
         const allItems = [...state.items, ...shoppingItems];
-        return { items: allItems, isLoading: false, ...deriveState(allItems) };
+        // batchCount = 1 für neues Rezept
+        const batchCounts = { ...state.recipeBatchCounts };
+        if (recipe.id) batchCounts[recipe.id] = 1;
+        return { items: allItems, isLoading: false, recipeBatchCounts: batchCounts, ...deriveState(allItems, batchCounts) };
       });
-      alert("DEBUG addRecipe: OK — " + (inserted?.length || 0) + " Items eingefügt");
     } catch (err: any) {
-      alert("DEBUG addRecipe: Exception: " + (err?.message || String(err)));
       set({ isLoading: false });
     }
   },
 
-  // +1: Rezept-Zutaten nochmal hinzufügen basierend auf existierenden Shopping-Items
-  // Nutzt API Route mit Service Role Key um RLS zu umgehen
+  // +1: Mengen aller Rezept-Zutaten erhöhen (z.B. 1→2, 200→400)
   addRecipeBatch: async (recipeId) => {
-    // Sofort Loading-State setzen für visuelles Feedback
     set({ isLoading: true });
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        alert("DEBUG +1: Nicht eingeloggt (keine Session)");
         set({ isLoading: false });
         return;
       }
 
-      // Existierende unchecked Items dieses Rezepts als Vorlage nehmen
-      const existingItems = get().items.filter(
-        (i) => i.recipeId === recipeId && !i.isChecked
-      );
+      const state = get();
+      const existingItems = state.items.filter((i) => i.recipeId === recipeId && !i.isChecked);
       if (existingItems.length === 0) {
-        alert("DEBUG +1: Keine unchecked Items für recipeId=" + recipeId + " gefunden. Total items im Store: " + get().items.length);
         set({ isLoading: false });
         return;
       }
 
-      // Distinct Items (nach Name) — keine Duplikate aus vorherigen Batches
-      const seen = new Set<string>();
-      const uniqueItems = existingItems.filter((i) => {
-        if (seen.has(i.name)) return false;
-        seen.add(i.name);
-        return true;
-      });
+      const currentBatch = state.recipeBatchCounts[recipeId] || 1;
+      const newBatch = currentBatch + 1;
 
-      const itemsToInsert = uniqueItems.map((item) => ({
-        name: item.name,
-        quantity: item.quantity || "",
-        unit: item.unit || "",
-        category: item.category || "other",
-        notes: item.notes || null,
-        recipe_id: recipeId,
-        recipe_name: item.recipeName || null,
-      }));
+      // Neue Mengen berechnen: qty * (newBatch / currentBatch)
+      const updates: Array<{ id: string; quantity: string }> = [];
+      const updatedItems: ShoppingItem[] = [];
 
-      // API Route mit Service Role Key — umgeht RLS
-      const res = await fetch("/api/shopping/batch-add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: itemsToInsert, userId: session.user.id }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        alert("DEBUG +1: API Error " + res.status + ": " + errText);
-        set({ isLoading: false });
-        return;
+      for (const item of existingItems) {
+        const currentQty = parseQty(item.quantity);
+        if (currentQty > 0) {
+          const baseQty = currentQty / currentBatch;
+          const newQty = baseQty * newBatch;
+          const newQtyStr = formatQty(newQty);
+          updates.push({ id: item.id, quantity: newQtyStr });
+          updatedItems.push({ ...item, quantity: newQtyStr });
+        } else {
+          // Nicht-numerische Menge (z.B. "eine Prise") — nicht ändern
+          updatedItems.push(item);
+        }
       }
 
-      const resJson = await res.json();
-      const inserted = resJson?.items;
-
-      if (inserted && inserted.length > 0) {
-        // Optimistisch: Neue Items direkt zum State hinzufügen
-        const shoppingItems = inserted.map(dbToShoppingItem);
-        set((state) => {
-          const allItems = [...state.items, ...shoppingItems];
-          return { items: allItems, isLoading: false, ...deriveState(allItems) };
+      // Optimistic Update
+      const newBatchCounts = { ...state.recipeBatchCounts, [recipeId]: newBatch };
+      set((s) => {
+        const allItems = s.items.map((item) => {
+          const upd = updatedItems.find((u) => u.id === item.id);
+          return upd || item;
         });
-        alert("DEBUG +1: OK — " + inserted.length + " Items eingefügt");
-      } else {
-        alert("DEBUG +1: API ok aber keine Items zurück. Response: " + JSON.stringify(resJson).slice(0, 200));
-        set({ isLoading: false });
-        get().loadShoppingList();
+        return { items: allItems, isLoading: false, recipeBatchCounts: newBatchCounts, ...deriveState(allItems, newBatchCounts) };
+      });
+
+      // DB Update
+      if (updates.length > 0) {
+        const res = await fetch("/api/shopping/batch-update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates, userId: session.user.id }),
+        });
+        if (!res.ok) {
+          // Rollback
+          const oldBatchCounts = { ...newBatchCounts, [recipeId]: currentBatch };
+          set((s) => {
+            const allItems = s.items.map((item) => {
+              const orig = existingItems.find((o) => o.id === item.id);
+              return orig || item;
+            });
+            return { items: allItems, recipeBatchCounts: oldBatchCounts, ...deriveState(allItems, oldBatchCounts) };
+          });
+        }
       }
     } catch (err: any) {
-      alert("DEBUG +1: Exception: " + (err?.message || String(err)));
       set({ isLoading: false });
       get().loadShoppingList();
     }
   },
 
-  // Alle Items eines Rezepts komplett löschen (API Route umgeht RLS)
-  removeAllRecipeItems: async (recipeId) => {
+  // -1: Mengen reduzieren. Bei batchCount=1 → alles löschen
+  removeRecipeBatch: async (recipeId) => {
+    set({ isLoading: true });
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        alert("DEBUG Löschen: Nicht eingeloggt (keine Session)");
+        set({ isLoading: false });
         return;
       }
 
-      const allItems = get().items.filter((i) => i.recipeId === recipeId);
-      const ids = allItems.map((i) => i.id);
-      if (ids.length === 0) {
-        alert("DEBUG Löschen: Keine Items für recipeId=" + recipeId + " gefunden. Total items: " + get().items.length);
+      const state = get();
+      const existingItems = state.items.filter((i) => i.recipeId === recipeId && !i.isChecked);
+      if (existingItems.length === 0) {
+        set({ isLoading: false });
         return;
       }
+
+      const currentBatch = state.recipeBatchCounts[recipeId] || 1;
+
+      // Bei batchCount 1 → alles löschen
+      if (currentBatch <= 1) {
+        set({ isLoading: false });
+        get().removeAllRecipeItems(recipeId);
+        return;
+      }
+
+      const newBatch = currentBatch - 1;
+
+      // Neue Mengen berechnen
+      const updates: Array<{ id: string; quantity: string }> = [];
+      const updatedItems: ShoppingItem[] = [];
+
+      for (const item of existingItems) {
+        const currentQty = parseQty(item.quantity);
+        if (currentQty > 0) {
+          const baseQty = currentQty / currentBatch;
+          const newQty = baseQty * newBatch;
+          const newQtyStr = formatQty(newQty);
+          updates.push({ id: item.id, quantity: newQtyStr });
+          updatedItems.push({ ...item, quantity: newQtyStr });
+        } else {
+          updatedItems.push(item);
+        }
+      }
+
+      // Optimistic Update
+      const newBatchCounts = { ...state.recipeBatchCounts, [recipeId]: newBatch };
+      set((s) => {
+        const allItems = s.items.map((item) => {
+          const upd = updatedItems.find((u) => u.id === item.id);
+          return upd || item;
+        });
+        return { items: allItems, isLoading: false, recipeBatchCounts: newBatchCounts, ...deriveState(allItems, newBatchCounts) };
+      });
+
+      // DB Update
+      if (updates.length > 0) {
+        const res = await fetch("/api/shopping/batch-update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ updates, userId: session.user.id }),
+        });
+        if (!res.ok) {
+          // Rollback
+          const oldBatchCounts = { ...newBatchCounts, [recipeId]: currentBatch };
+          set((s) => {
+            const allItems = s.items.map((item) => {
+              const orig = existingItems.find((o) => o.id === item.id);
+              return orig || item;
+            });
+            return { items: allItems, recipeBatchCounts: oldBatchCounts, ...deriveState(allItems, oldBatchCounts) };
+          });
+        }
+      }
+    } catch (err: any) {
+      set({ isLoading: false });
+      get().loadShoppingList();
+    }
+  },
+
+  // Alle Items eines Rezepts komplett löschen
+  removeAllRecipeItems: async (recipeId) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      const allItems = get().items.filter((i) => i.recipeId === recipeId);
+      const ids = allItems.map((i) => i.id);
+      if (ids.length === 0) return;
 
       // Optimistic Update
       set((state) => {
         const remaining = state.items.filter((i) => i.recipeId !== recipeId);
-        return { items: remaining, ...deriveState(remaining) };
+        const batchCounts = { ...state.recipeBatchCounts };
+        delete batchCounts[recipeId];
+        return { items: remaining, recipeBatchCounts: batchCounts, ...deriveState(remaining, batchCounts) };
       });
 
       const res = await fetch("/api/shopping/batch-delete", {
@@ -293,88 +384,15 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       });
 
       if (!res.ok) {
-        const errText = await res.text();
-        alert("DEBUG Löschen: API Error " + res.status + ": " + errText);
         // Rollback
         set((state) => {
           const restored = [...state.items, ...allItems];
-          return { items: restored, ...deriveState(restored) };
+          const batchCounts = { ...state.recipeBatchCounts, [recipeId]: 1 };
+          return { items: restored, recipeBatchCounts: batchCounts, ...deriveState(restored, batchCounts) };
         });
-      } else {
-        const resJson = await res.json();
-        alert("DEBUG Löschen: OK — " + (resJson?.deleted || 0) + " Items gelöscht");
       }
-    } catch (err: any) {
-      alert("DEBUG Löschen: Exception: " + (err?.message || String(err)));
-    }
-  },
-
-  removeRecipeBatch: async (recipeId) => {
-    set({ isLoading: true });
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        alert("DEBUG -1: Nicht eingeloggt (keine Session)");
-        set({ isLoading: false });
-        return;
-      }
-
-      // Alle Items für dieses Rezept holen, nach Timestamp gruppieren
-      const allItems = get().items.filter((i) => i.recipeId === recipeId && !i.isChecked);
-      if (allItems.length === 0) {
-        alert("DEBUG -1: Keine unchecked Items für recipeId=" + recipeId);
-        set({ isLoading: false });
-        return;
-      }
-
-      const timestampGroups: Record<string, ShoppingItem[]> = {};
-      for (const item of allItems) {
-        const ts = item.createdAt?.slice(0, 19) || "unknown";
-        if (!timestampGroups[ts]) timestampGroups[ts] = [];
-        timestampGroups[ts].push(item);
-      }
-
-      const batches = Object.entries(timestampGroups).sort(([a], [b]) => b.localeCompare(a)); // neueste zuerst
-      let idsToDelete: string[] = [];
-
-      if (batches.length <= 1) {
-        idsToDelete = allItems.map((i) => i.id);
-      } else {
-        const [, newestBatchItems] = batches[0];
-        idsToDelete = newestBatchItems.map((i) => i.id);
-      }
-
-      alert("DEBUG -1: " + batches.length + " Batches, lösche " + idsToDelete.length + " Items");
-
-      if (idsToDelete.length > 0) {
-        const res = await fetch("/api/shopping/batch-delete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids: idsToDelete, userId: session.user.id }),
-        });
-        if (!res.ok) {
-          const errText = await res.text();
-          alert("DEBUG -1: API Error " + res.status + ": " + errText);
-          set({ isLoading: false });
-          return;
-        }
-        const resJson = await res.json();
-        alert("DEBUG -1: OK — " + (resJson?.deleted || 0) + " gelöscht");
-      }
-
-      // State aktualisieren
-      set((state) => {
-        const remaining = state.items.filter((i) => {
-          if (i.recipeId !== recipeId || i.isChecked) return true;
-          const ts = i.createdAt?.slice(0, 19) || "unknown";
-          if (batches.length <= 1) return false; // alle weg
-          return ts !== batches[0][0]; // neuesten Batch entfernen
-        });
-        return { items: remaining, isLoading: false, ...deriveState(remaining) };
-      });
-    } catch (err: any) {
-      alert("DEBUG -1: Exception: " + (err?.message || String(err)));
-      set({ isLoading: false });
+    } catch {
+      // silent
     }
   },
 
@@ -389,12 +407,7 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: session.user.id,
-          items: [{
-            name,
-            quantity,
-            unit,
-            category: "other",
-          }],
+          items: [{ name, quantity, unit, category: "other" }],
         }),
       });
 
@@ -404,7 +417,7 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       const item = dbToShoppingItem(inserted[0]);
       set((state) => {
         const allItems = [...state.items, item];
-        return { items: allItems, isLoading: false, ...deriveState(allItems) };
+        return { items: allItems, isLoading: false, ...deriveState(allItems, state.recipeBatchCounts) };
       });
     } catch (err: any) {
       set({ isLoading: false });
@@ -412,17 +425,15 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
   },
 
   toggleItem: async (id) => {
-    // Optimistic Update: Sofort lokal umschalten, dann DB sync
     const current = get().items.find((i) => i.id === id);
     if (!current) return;
 
     const toggled = { ...current, isChecked: !current.isChecked };
     set((state) => {
       const allItems = state.items.map((i) => (i.id === id ? toggled : i));
-      return { items: allItems, ...deriveState(allItems) };
+      return { items: allItems, ...deriveState(allItems, state.recipeBatchCounts) };
     });
 
-    // DB im Hintergrund synchronisieren via API Route
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("Not authenticated");
@@ -430,31 +441,25 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       const res = await fetch("/api/shopping/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id,
-          userId: session.user.id,
-          updates: { is_checked: toggled.isChecked },
-        }),
+        body: JSON.stringify({ id, userId: session.user.id, updates: { is_checked: toggled.isChecked } }),
       });
       if (!res.ok) throw new Error("Update failed");
     } catch {
-      // Rollback bei Fehler
       set((state) => {
         const allItems = state.items.map((i) => (i.id === id ? current : i));
-        return { items: allItems, ...deriveState(allItems) };
+        return { items: allItems, ...deriveState(allItems, state.recipeBatchCounts) };
       });
     }
   },
 
   updateItem: async (id, updates) => {
-    // Optimistic Update
     const current = get().items.find((i) => i.id === id);
     if (!current) return;
 
     const updated = { ...current, ...updates };
     set((state) => {
       const allItems = state.items.map((i) => (i.id === id ? updated : i));
-      return { items: allItems, ...deriveState(allItems) };
+      return { items: allItems, ...deriveState(allItems, state.recipeBatchCounts) };
     });
 
     try {
@@ -473,20 +478,18 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       });
       if (!res.ok) throw new Error("Update failed");
     } catch {
-      // Rollback
       set((state) => {
         const allItems = state.items.map((i) => (i.id === id ? current : i));
-        return { items: allItems, ...deriveState(allItems) };
+        return { items: allItems, ...deriveState(allItems, state.recipeBatchCounts) };
       });
     }
   },
 
   deleteItem: async (id) => {
-    // Optimistic Delete
     const current = get().items.find((i) => i.id === id);
     set((state) => {
       const allItems = state.items.filter((i) => i.id !== id);
-      return { items: allItems, ...deriveState(allItems) };
+      return { items: allItems, ...deriveState(allItems, state.recipeBatchCounts) };
     });
 
     try {
@@ -500,11 +503,10 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       });
       if (!res.ok) throw new Error("Delete failed");
     } catch {
-      // Rollback
       if (current) {
         set((state) => {
           const allItems = [...state.items, current];
-          return { items: allItems, ...deriveState(allItems) };
+          return { items: allItems, ...deriveState(allItems, state.recipeBatchCounts) };
         });
       }
     }
@@ -516,7 +518,6 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("Not authenticated");
 
-      // Lösche alle sichtbaren Items via API Route
       const ids = get().items.map((i) => i.id);
       if (ids.length === 0) { set({ isLoading: false }); return; }
 
@@ -534,6 +535,7 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         uncheckedItems: [],
         checkedItems: [],
         customItems: [],
+        recipeBatchCounts: {},
         isLoading: false,
       });
     } catch (err: any) {
