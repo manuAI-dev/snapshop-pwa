@@ -560,3 +560,101 @@ export function getMixedFeed(enabledSourceIds: string[]): FeedRecipeItem[] {
 export function getTotalRecipeCount(): number {
   return FEED_SOURCES.reduce((sum, s) => sum + s.recipes.length, 0);
 }
+
+// ============================================================
+// Top-Rezepte für den Swipe-Feed (handverlesen, beste Bilder)
+// Klassiker & Highlights quer durch alle Quellen
+// ============================================================
+
+const TOP_RECIPE_SLUGS: string[] = [
+  // Fooby Highlights
+  "28315/poulet-cordon-bleu-mit-pommes-frites",
+  "28316/kartoffelgratin",
+  "28334/spaghetti-all-arrabbiata",
+  "18192/steinpilzrisotto",
+  "17595/nasi-goreng",
+  "17010/boeuf-bourguignon",
+  "16991/caesar-salad",
+  "18734/zimtschnecken",
+  "18739/baklava",
+  "16113/quiche-lorraine",
+  "16252/spaghetti-aglio-e-olio",
+  "16210/gyoza--japanische-teigtaschen-",
+  "29094/masala-fried-chicken",
+  "28883/parmigiana-di-melanzane",
+  "28901/zitronen-poulet-mit-oliven",
+  "28900/baerlauch-gnocchi",
+  "29001/erdbeer-pavlova",
+  "19162/ungarisches-gulasch",
+  "16315/ossobuco-mit-gremolata",
+  "12049/tarte-tatin-",
+  // Betty Bossi Highlights
+  "alplermagronen-10004767",
+  "kasefondue-10009741",
+  "rosti-10003120",
+  "jagerschnitzel-10011889",
+  "risotto-ticinese-10001247",
+  "hornligratin-mit-hackfleisch-10009659",
+  "cashew-chicken-noodles-10012105",
+  "spaghetti-an-poulet-senfsauce-10012200",
+  "smashed-potatoes-mit-barlauch-dip-10012092",
+  "mini-spargel-tartelettes-10012098",
+  // Migusto Highlights
+  "pad-thai",
+  "shakshuka",
+  "poulet-curry",
+  "chili-con-carne",
+  "wiener-schnitzel",
+  "falafel",
+  "tiramisu",
+  "linsen-dal",
+  "ratatouille",
+  "pastel-de-nata",
+  // Swissmilk Highlights
+  "SM2017_DIVE_15/lasagne",
+  "LM200904_53/spaghetti-carbonara-mit-rahm",
+  "LM201206_80/hamburger",
+  "SM2018_CHDO_13/shakshuka",
+  "LM200105_07_MEN105B0/flammkuchen",
+  "SM2017_DIVE_05/pancakes",
+  "LM_div_0812_03/kartoffelgratin",
+  "LM199904_46_MEN904B046A/boeuf-stroganoff",
+  "LM201507_9/gefuellte-peperoni",
+  "SM2024_DIVE_66/polpette",
+];
+
+/**
+ * Gibt die Top-Rezepte für den Swipe-Feed zurück.
+ * Handverlesene Highlights aus allen Quellen, täglich gemischt.
+ */
+export function getTopRecipes(): FeedRecipeItem[] {
+  const slugSet = new Set(TOP_RECIPE_SLUGS);
+  const items: FeedRecipeItem[] = [];
+
+  for (const source of FEED_SOURCES) {
+    for (let i = 0; i < source.recipes.length; i++) {
+      const r = source.recipes[i];
+      if (slugSet.has(r.slug)) {
+        items.push({
+          id: `top-${source.id}-${i}`,
+          title: r.title,
+          imageUrl: r.imageUrl || (source.imageUrlPattern ? source.imageUrlPattern(r.slug) : null),
+          sourceUrl: source.recipeUrlPattern(r.slug),
+          sourceId: source.id,
+          sourceName: source.name,
+          sourceColor: source.color,
+          tags: categorizeRecipe(r.title),
+        });
+      }
+    }
+  }
+
+  // Shuffle deterministically per day
+  const today = new Date().toISOString().slice(0, 10);
+  const seed = today.split("-").reduce((acc, n) => acc + parseInt(n), 0);
+  return items.sort((a, b) => {
+    const hashA = ((a.title.charCodeAt(0) + a.title.length) * seed) % 997;
+    const hashB = ((b.title.charCodeAt(0) + b.title.length) * seed) % 997;
+    return hashA - hashB;
+  });
+}
