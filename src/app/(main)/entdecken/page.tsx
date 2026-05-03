@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useFeedStore, FeedItem, AvailableSource } from "@/stores/feed-store";
 import { useRecipeStore } from "@/stores/recipe-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
-import { FILTER_OPTIONS, FilterOption, getTopRecipes, FeedRecipeItem } from "@/data/feed-sources";
+import { FILTER_OPTIONS, FILTER_GROUPS, FilterOption, getTopRecipes, FeedRecipeItem } from "@/data/feed-sources";
 import AppHeader from "@/components/ui/app-header";
 
 // ============================================================
@@ -592,6 +592,8 @@ export default function EntdeckenPage() {
   const { loadRecipes } = useRecipeStore();
   const displayItems = filteredItems();
   const [showFeed, setShowFeed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     loadEnabledSources();
@@ -608,12 +610,19 @@ export default function EntdeckenPage() {
     router.push(`/rezepte/${recipeId}`);
   }, [loadRecipes, router]);
 
+  // Client-side search filter
+  const searchFiltered = searchQuery.trim()
+    ? displayItems.filter((item) =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : displayItems;
+
   return (
     <div style={{ backgroundColor: "#FFF3EB", minHeight: "100vh", paddingBottom: 90 }}>
       {/* Header */}
       <AppHeader title="Entdecken" subtitle="Rezeptideen aus deinen Lieblingsquellen" />
 
-      {/* View Toggle: Grid / Feed */}
+      {/* View Toggle: Stöbern / Feed */}
       <div style={{ padding: "0 20px", marginBottom: 12, display: "flex", gap: 0 }}>
         <div style={{
           display: "flex", backgroundColor: "#FCF7F2", borderRadius: 12, padding: 3, flex: 1,
@@ -631,7 +640,6 @@ export default function EntdeckenPage() {
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}
           >
-            {/* Grid icon */}
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" />
               <rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
@@ -651,7 +659,6 @@ export default function EntdeckenPage() {
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             }}
           >
-            {/* Play/feed icon */}
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
             </svg>
@@ -660,11 +667,46 @@ export default function EntdeckenPage() {
         </div>
       </div>
 
-      {/* === GRID VIEW (original) === */}
+      {/* === GRID VIEW === */}
       {!showFeed && (
         <>
+          {/* Search Bar */}
+          <div style={{ padding: "0 20px", marginBottom: 10 }}>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              backgroundColor: "white", borderRadius: 14, padding: "10px 14px",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+              border: searchQuery ? "1.5px solid #F2894F" : "1.5px solid #EAEAEA",
+              transition: "border 0.2s",
+            }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={searchQuery ? "#F2894F" : "#9193A0"} strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Rezept suchen..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  flex: 1, border: "none", outline: "none", fontSize: 14, color: "#212022",
+                  backgroundColor: "transparent", fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex" }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9193A0" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Source Toggle Chips */}
-          <div style={{ padding: "0 20px", marginBottom: 10, display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }} className="no-scrollbar">
+          <div style={{ padding: "0 20px", marginBottom: 8, display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }} className="no-scrollbar">
             {availableSources.map((source) => (
               <SourceChip
                 key={source.id}
@@ -675,29 +717,109 @@ export default function EntdeckenPage() {
             ))}
           </div>
 
-          {/* Filter Chips */}
-          <div style={{ padding: "0 20px", marginBottom: 16, display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, alignItems: "center" }} className="no-scrollbar">
-            {FILTER_OPTIONS.map((filter) => (
-              <FilterChip
-                key={filter.id}
-                filter={filter}
-                active={activeFilters.includes(filter.id)}
-                onToggle={() => toggleFilter(filter.id)}
-              />
-            ))}
-            {activeFilters.length > 0 && (
-              <button
-                onClick={clearFilters}
-                style={{
-                  display: "inline-flex", alignItems: "center", padding: "6px 10px",
-                  borderRadius: 16, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
-                  border: "none", backgroundColor: "transparent", color: "#F2894F",
-                  cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}
+          {/* Filter Toggle Bar */}
+          <div style={{ padding: "0 20px", marginBottom: 8 }}>
+            <button
+              onClick={() => setFiltersOpen(!filtersOpen)}
+              style={{
+                display: "flex", alignItems: "center", gap: 8, width: "100%",
+                padding: "10px 14px", borderRadius: 12,
+                backgroundColor: activeFilters.length > 0 ? "#FEF1E8" : "white",
+                border: activeFilters.length > 0 ? "1.5px solid #F2894F" : "1.5px solid #EAEAEA",
+                cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
+                transition: "all 0.2s",
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={activeFilters.length > 0 ? "#F2894F" : "#9193A0"} strokeWidth="2">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="6" y1="12" x2="18" y2="12" />
+                <line x1="8" y1="18" x2="16" y2="18" />
+              </svg>
+              <span style={{ fontSize: 13, fontWeight: 600, color: activeFilters.length > 0 ? "#F2894F" : "#555", flex: 1, textAlign: "left" }}>
+                Filter{activeFilters.length > 0 ? ` (${activeFilters.length} aktiv)` : ""}
+              </span>
+              {activeFilters.length > 0 && (
+                <span
+                  onClick={(e) => { e.stopPropagation(); clearFilters(); }}
+                  style={{ fontSize: 11, fontWeight: 600, color: "#F2894F", padding: "2px 8px", borderRadius: 8, backgroundColor: "rgba(242,137,79,0.15)" }}
+                >
+                  Reset
+                </span>
+              )}
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9193A0" strokeWidth="2"
+                style={{ transform: filtersOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
               >
-                ✕ Reset
-              </button>
-            )}
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Expandable Filter Groups */}
+          {filtersOpen && (
+            <div style={{
+              padding: "0 20px", marginBottom: 12,
+              animation: "slideDown 0.2s ease-out",
+            }}>
+              <div style={{
+                backgroundColor: "white", borderRadius: 16, padding: "12px 14px",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+              }}>
+                {FILTER_GROUPS.map((group) => (
+                  <div key={group.category} style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#9193A0", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 8 }}>
+                      {group.label}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {group.options.map((filter) => (
+                        <FilterChip
+                          key={filter.id}
+                          filter={filter}
+                          active={activeFilters.includes(filter.id)}
+                          onToggle={() => toggleFilter(filter.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Active filter pills (quick view when drawer closed) */}
+          {!filtersOpen && activeFilters.length > 0 && (
+            <div style={{ padding: "0 20px", marginBottom: 8, display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4 }} className="no-scrollbar">
+              {activeFilters.map((filterId) => {
+                const f = FILTER_OPTIONS.find((o) => o.id === filterId);
+                if (!f) return null;
+                return (
+                  <button
+                    key={filterId}
+                    onClick={() => toggleFilter(filterId)}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      padding: "5px 10px", borderRadius: 10,
+                      backgroundColor: f.color, color: "white",
+                      fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
+                      border: "none", cursor: "pointer",
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    }}
+                  >
+                    {f.label}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Result count */}
+          <div style={{ padding: "0 20px", marginBottom: 10 }}>
+            <span style={{ fontSize: 12, color: "#9193A0", fontWeight: 500 }}>
+              {searchFiltered.length} Rezepte
+              {searchQuery && ` für "${searchQuery}"`}
+            </span>
           </div>
 
           {/* Feed Grid */}
@@ -719,22 +841,24 @@ export default function EntdeckenPage() {
                   Nochmal versuchen
                 </button>
               </div>
-            ) : displayItems.length === 0 ? (
+            ) : searchFiltered.length === 0 ? (
               <div style={{ textAlign: "center", paddingTop: 60 }}>
                 <p style={{ fontSize: 14, color: "#9193A0" }}>
-                  {activeFilters.length > 0
+                  {searchQuery
+                    ? `Kein Rezept für "${searchQuery}" gefunden.`
+                    : activeFilters.length > 0
                     ? "Keine Rezepte für diese Filter. Versuche andere Kombinationen."
                     : "Keine Rezepte gefunden. Aktiviere mindestens eine Quelle."}
                 </p>
-                {activeFilters.length > 0 && (
-                  <button onClick={clearFilters} style={{ marginTop: 12, padding: "8px 20px", borderRadius: 12, backgroundColor: "#F2894F", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                    Filter zurücksetzen
+                {(activeFilters.length > 0 || searchQuery) && (
+                  <button onClick={() => { clearFilters(); setSearchQuery(""); }} style={{ marginTop: 12, padding: "8px 20px", borderRadius: 12, backgroundColor: "#F2894F", color: "white", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    Alles zurücksetzen
                   </button>
                 )}
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                {displayItems.map((item) => (
+                {searchFiltered.map((item) => (
                   <div
                     key={item.id}
                     onClick={() => handleCardClick(item)}
@@ -793,6 +917,7 @@ export default function EntdeckenPage() {
 
       <style>{`
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
