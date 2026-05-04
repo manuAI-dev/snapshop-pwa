@@ -3,6 +3,70 @@
 import { create } from "zustand";
 import { User, AuthState } from "@/types";
 import { supabase } from "@/lib/supabase";
+import { generateId } from "@/lib/utils";
+
+// ============================================================
+// Guest recipe migration (Try-without-Signup → Account)
+// ============================================================
+
+const GUEST_RECIPE_KEY = "snapshop_guest_recipe";
+
+async function migrateGuestRecipe(userId: string): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = window.localStorage.getItem(GUEST_RECIPE_KEY);
+    if (!raw) return;
+
+    const recipe = JSON.parse(raw);
+    if (!recipe || !recipe.dishName) return;
+
+    const id = generateId();
+    const { error: recipeError } = await supabase.from("recipes").insert([
+      {
+        id,
+        user_id: userId,
+        dish_name: recipe.dishName || "Rezept",
+        cuisine: recipe.cuisine || "",
+        description: recipe.description || "",
+        instructions: recipe.instructions || [],
+        servings: recipe.servings || 4,
+        prep_time: recipe.prepTime || 0,
+        cook_time: recipe.cookTime || 0,
+        difficulty: recipe.difficulty || "medium",
+        rating: null,
+        is_favorite: false,
+        nutrition: recipe.nutrition || null,
+        recipe_images: recipe.recipeImages || [],
+        source_url: recipe.sourceUrl || null,
+      },
+    ]);
+    if (recipeError) {
+      console.error("Guest recipe migration failed:", recipeError);
+      return;
+    }
+
+    // Insert ingredients
+    if (recipe.ingredients?.length > 0) {
+      const ingredients = recipe.ingredients.map((ing: any) => ({
+        recipe_id: id,
+        name: ing.name || "",
+        quantity: String(ing.quantity || ""),
+        unit: ing.unit || "",
+        category: ing.category || "other",
+        group_name: ing.group || null,
+        notes: ing.notes || null,
+        is_selected: ing.isSelected ?? true,
+      }));
+      await supabase.from("ingredients").insert(ingredients);
+    }
+
+    // Clear guest recipe from localStorage
+    window.localStorage.removeItem(GUEST_RECIPE_KEY);
+    console.log("Guest recipe migrated successfully:", id);
+  } catch (err) {
+    console.error("Guest recipe migration error:", err);
+  }
+}
 
 interface AuthStore extends AuthState {
   login: (email: string, password: string) => Promise<void>;
@@ -40,6 +104,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
         createdAt: data.user.created_at,
       };
       set({ user, isAuthenticated: true, isLoading: false });
+
+      // Migrate guest recipe from Try-without-Signup
+      migrateGuestRecipe(data.user.id);
     } catch (err: any) {
       const msg = err?.message?.includes("Invalid login")
         ? "E-Mail oder Passwort falsch"
@@ -73,6 +140,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
         createdAt: data.user.created_at,
       };
       set({ user, isAuthenticated: true, isLoading: false });
+
+      // Migrate guest recipe from Try-without-Signup
+      migrateGuestRecipe(data.user.id);
     } catch (err: any) {
       if (err?.message === "CONFIRM_EMAIL") {
         set({ isLoading: false });
@@ -112,6 +182,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
           createdAt: session.user.created_at,
         };
         set({ user, isAuthenticated: true, isLoading: false });
+
+        // Migrate guest recipe if still present
+        migrateGuestRecipe(session.user.id);
       } else {
         set({ user: null, isAuthenticated: false, isLoading: false });
       }

@@ -25,8 +25,8 @@ export default function RootPage() {
           // Returning user → login
           router.push("/login");
         } else {
-          // First visit → landing page
-          window.location.href = "/landing.html";
+          // First visit → Try without Signup demo
+          router.push("/try");
         }
       }
     }
