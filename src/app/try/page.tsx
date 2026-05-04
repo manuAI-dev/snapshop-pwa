@@ -65,9 +65,13 @@ export default function TryPage() {
       const formData = new FormData();
       formData.append("image", file);
 
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       const response = await fetch("/api/recipe/generate", {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
 
       const recipeJson = await parseRecipeJsonFromSSE(response);
@@ -104,11 +108,19 @@ export default function TryPage() {
     }
   };
 
+  const abortRef = useRef<AbortController | null>(null);
+
   const handleRetry = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
     setPreview(null);
     setRecipe(null);
     setError(null);
     setPhase("intro");
+  };
+
+  const handleSkip = () => {
+    router.push("/login");
   };
 
   const handleSignup = () => {
@@ -190,11 +202,24 @@ export default function TryPage() {
             Kostenlos und ohne Registrierung
           </p>
 
+          {/* Skip → Login/Register */}
+          <button
+            onClick={handleSkip}
+            style={{
+              marginTop: 32, padding: "12px 32px", borderRadius: 14,
+              border: "1.5px solid #DCDDDC", backgroundColor: "white",
+              fontSize: 14, fontWeight: 600, color: "#555",
+              cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
+            }}
+          >
+            Überspringen
+          </button>
+
           {/* Login link for existing users */}
           <button
             onClick={() => router.push("/login")}
             style={{
-              marginTop: 32, background: "none", border: "none",
+              marginTop: 12, background: "none", border: "none",
               fontSize: 13, color: "#9193A0", cursor: "pointer",
               fontFamily: "'Plus Jakarta Sans', sans-serif",
               textDecoration: "underline",
@@ -294,6 +319,17 @@ export default function TryPage() {
           <p style={{ fontSize: 14, color: "#9193A0", marginTop: 8 }}>
             Zutaten, Schritte und Nährwerte werden erkannt
           </p>
+          <button
+            onClick={handleRetry}
+            style={{
+              marginTop: 32, padding: "12px 32px", borderRadius: 14,
+              border: "1.5px solid #DCDDDC", backgroundColor: "white",
+              fontSize: 14, fontWeight: 600, color: "#555",
+              cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
+            }}
+          >
+            Abbrechen
+          </button>
           <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         </div>
       )}
