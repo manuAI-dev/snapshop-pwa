@@ -1181,7 +1181,7 @@ export function getRecipesForSource(sourceId: string): FeedRecipeItem[] {
       sourceColor: source.color,
       tags: categorizeRecipe(r.title),
     }))
-    // Kein Filter auf imageUrl – Rezepte ohne Bild werden mit Placeholder angezeigt
+    .filter((item) => !!item.imageUrl); // Nur Rezepte mit Hauptbild anzeigen
 
   // Shuffle deterministically per day
   const today = new Date().toISOString().slice(0, 10);
@@ -1292,10 +1292,12 @@ export function getTopRecipes(): FeedRecipeItem[] {
     for (let i = 0; i < source.recipes.length; i++) {
       const r = source.recipes[i];
       if (slugSet.has(r.slug)) {
+        const imageUrl = r.imageUrl || (source.imageUrlPattern ? source.imageUrlPattern(r.slug) : null);
+        if (!imageUrl) continue; // Nur Rezepte mit Hauptbild
         items.push({
           id: `top-${source.id}-${i}`,
           title: r.title,
-          imageUrl: r.imageUrl || (source.imageUrlPattern ? source.imageUrlPattern(r.slug) : null),
+          imageUrl,
           sourceUrl: source.recipeUrlPattern(r.slug),
           sourceId: source.id,
           sourceName: source.name,

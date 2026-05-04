@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { FeedPreview } from "@/types";
 import { generateId } from "@/lib/utils";
+import { parseRecipeJsonFromSSE } from "@/lib/parse-sse";
 
 // ============================================================
 // Types
@@ -236,9 +237,30 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
         body: JSON.stringify({ url: previewItem.sourceUrl, pageText }),
       });
 
-      if (!generateResponse.ok) throw new Error("Rezept-Import fehlgeschlagen");
+      const recipeJson = await parseRecipeJsonFromSSE(generateResponse);
 
-      const recipe = await generateResponse.json();
+      // Normalize to recipe shape
+      const recipe: any = {
+        dishName: recipeJson.dishName || recipeJson.dish_name || previewItem.title,
+        cuisine: recipeJson.cuisine || "",
+        description: recipeJson.description || "",
+        ingredients: (recipeJson.ingredients || []).map((ing: any) => ({
+          name: ing.name || "",
+          quantity: String(ing.quantity || ""),
+          unit: ing.unit || "",
+          category: ing.category || "other",
+          group: ing.group || null,
+          notes: ing.notes || null,
+          isSelected: ing.isSelected ?? true,
+        })),
+        instructions: recipeJson.instructions || [],
+        servings: recipeJson.servings || 4,
+        prepTime: recipeJson.prepTime || recipeJson.prep_time || 0,
+        cookTime: recipeJson.cookTime || recipeJson.cook_time || 0,
+        difficulty: (recipeJson.difficulty || "medium").toLowerCase(),
+        nutrition: recipeJson.nutrition || null,
+        recipeImages: recipeJson.recipeImages || [],
+      };
 
       // Add image
       const imgUrl = extractedImageUrl || previewItem.imageUrl;

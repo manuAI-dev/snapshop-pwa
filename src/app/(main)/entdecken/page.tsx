@@ -738,14 +738,6 @@ export default function EntdeckenPage() {
               <span style={{ fontSize: 13, fontWeight: 600, color: activeFilters.length > 0 ? "#F2894F" : "#555", flex: 1, textAlign: "left" }}>
                 Filter{activeFilters.length > 0 ? ` (${activeFilters.length} aktiv)` : ""}
               </span>
-              {activeFilters.length > 0 && (
-                <span
-                  onClick={(e) => { e.stopPropagation(); clearFilters(); }}
-                  style={{ fontSize: 11, fontWeight: 600, color: "#F2894F", padding: "2px 8px", borderRadius: 8, backgroundColor: "rgba(242,137,79,0.15)" }}
-                >
-                  Reset
-                </span>
-              )}
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9193A0" strokeWidth="2"
                 style={{ transform: filtersOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
               >
@@ -781,6 +773,33 @@ export default function EntdeckenPage() {
                     </div>
                   </div>
                 ))}
+                {/* Reset + Schliessen — klar getrennt am Ende des Drawers */}
+                <div style={{ display: "flex", gap: 8, marginTop: 4, paddingTop: 10, borderTop: "1px solid #F0F0F0" }}>
+                  {activeFilters.length > 0 && (
+                    <button
+                      onClick={() => clearFilters()}
+                      style={{
+                        flex: 1, padding: "10px 14px", borderRadius: 10,
+                        border: "1.5px solid #F2894F", backgroundColor: "rgba(242,137,79,0.08)",
+                        fontSize: 13, fontWeight: 600, color: "#F2894F",
+                        cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      }}
+                    >
+                      Filter zurücksetzen
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setFiltersOpen(false)}
+                    style={{
+                      flex: 1, padding: "10px 14px", borderRadius: 10,
+                      border: "none", backgroundColor: "#4B164C",
+                      fontSize: 13, fontWeight: 600, color: "white",
+                      cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    }}
+                  >
+                    {searchFiltered.length} Rezepte anzeigen
+                  </button>
+                </div>
               </div>
             </div>
           )}

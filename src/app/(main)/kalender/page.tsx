@@ -10,6 +10,7 @@ import { useSubscriptionStore } from "@/stores/subscription-store";
 import { getMixedFeed } from "@/data/feed-sources";
 import { Recipe } from "@/types";
 import { MealType, MealSlot } from "@/types/planner";
+import { parseRecipeJsonFromSSE } from "@/lib/parse-sse";
 import AppHeader from "@/components/ui/app-header";
 
 const monthNames = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
@@ -604,14 +605,36 @@ function CalendarFeedPreview({ meal, onSaved, onClose }: {
         extractedImageUrl = data.imageUrl;
       }
 
-      // 2. Generate recipe via AI
+      // 2. Generate recipe via AI (SSE stream)
       const genRes = await fetch("/api/recipe/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: meal.sourceUrl, pageText }),
       });
-      if (!genRes.ok) throw new Error("Rezept-Import fehlgeschlagen");
-      const recipe = await genRes.json();
+      const recipeJson = await parseRecipeJsonFromSSE(genRes);
+
+      // Normalize to recipe shape
+      const recipe: any = {
+        dishName: recipeJson.dishName || recipeJson.dish_name || meal.recipeName,
+        cuisine: recipeJson.cuisine || "",
+        description: recipeJson.description || "",
+        ingredients: (recipeJson.ingredients || []).map((ing: any) => ({
+          name: ing.name || "",
+          quantity: String(ing.quantity || ""),
+          unit: ing.unit || "",
+          category: ing.category || "other",
+          group: ing.group || null,
+          notes: ing.notes || null,
+          isSelected: ing.isSelected ?? true,
+        })),
+        instructions: recipeJson.instructions || [],
+        servings: recipeJson.servings || 4,
+        prepTime: recipeJson.prepTime || recipeJson.prep_time || 0,
+        cookTime: recipeJson.cookTime || recipeJson.cook_time || 0,
+        difficulty: (recipeJson.difficulty || "medium").toLowerCase(),
+        nutrition: recipeJson.nutrition || null,
+        recipeImages: recipeJson.recipeImages || [],
+      };
 
       // 3. Add image
       const imgUrl = extractedImageUrl || previewData?.imageUrl || meal.recipeImage;
