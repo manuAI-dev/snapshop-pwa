@@ -266,7 +266,9 @@ function PreviewModal({ onSaved }: { onSaved: (recipeId: string) => void }) {
 // ============================================================
 
 function SwipeFeed({ onClose, onOpenPreview }: { onClose: () => void; onOpenPreview: (item: FeedItem) => void }) {
-  const [topRecipes] = useState<FeedRecipeItem[]>(() => getTopRecipes());
+  const [allTopRecipes] = useState<FeedRecipeItem[]>(() => getTopRecipes());
+  const [brokenFeedImages, setBrokenFeedImages] = useState<Set<string>>(new Set());
+  const topRecipes = allTopRecipes.filter((r) => !brokenFeedImages.has(r.id));
   const [currentIndex, setCurrentIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
@@ -373,7 +375,10 @@ function SwipeFeed({ onClose, onOpenPreview }: { onClose: () => void; onOpenPrev
                   transition: "opacity 0.4s",
                 }}
                 onLoad={() => setImgLoaded((prev) => ({ ...prev, [index]: true }))}
-                onError={() => setImgLoaded((prev) => ({ ...prev, [index]: true }))}
+                onError={() => {
+                  setImgLoaded((prev) => ({ ...prev, [index]: true }));
+                  setBrokenFeedImages((prev) => { const next = new Set(prev); next.add(item.id); return next; });
+                }}
               />
             </>
           ) : (
@@ -594,6 +599,7 @@ export default function EntdeckenPage() {
   const [showFeed, setShowFeed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadEnabledSources();
@@ -610,12 +616,22 @@ export default function EntdeckenPage() {
     router.push(`/rezepte/${recipeId}`);
   }, [loadRecipes, router]);
 
-  // Client-side search filter
-  const searchFiltered = searchQuery.trim()
-    ? displayItems.filter((item) =>
-        item.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : displayItems;
+  // Client-side search + broken image filter
+  const searchFiltered = displayItems
+    .filter((item) => !brokenImages.has(item.id))
+    .filter((item) =>
+      searchQuery.trim()
+        ? item.title.toLowerCase().includes(searchQuery.toLowerCase())
+        : true
+    );
+
+  const handleImageError = useCallback((itemId: string) => {
+    setBrokenImages((prev) => {
+      const next = new Set(prev);
+      next.add(itemId);
+      return next;
+    });
+  }, []);
 
   return (
     <div style={{ backgroundColor: "#FFF3EB", minHeight: "100vh", paddingBottom: 90 }}>
@@ -890,19 +906,9 @@ export default function EntdeckenPage() {
                           alt={item.title}
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           loading="lazy"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = "none";
-                            if (target.parentElement) {
-                              target.parentElement.style.background = `linear-gradient(135deg, ${item.sourceColor} 0%, #333 100%)`;
-                            }
-                          }}
+                          onError={() => handleImageError(item.id)}
                         />
-                      ) : (
-                        <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${item.sourceColor} 0%, #333 100%)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z" /><line x1="6" y1="17" x2="18" y2="17" /></svg>
-                        </div>
-                      )}
+                      ) : null}
                       <div style={{ position: "absolute", top: 6, left: 6 }}>
                         <SourceBadge name={item.sourceName} color={item.sourceColor} />
                       </div>
