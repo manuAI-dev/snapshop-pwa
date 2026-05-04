@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useHouseholdStore } from "@/stores/household-store";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function JoinPage() {
+  return (
+    <Suspense>
+      <JoinContent />
+    </Suspense>
+  );
+}
+
+function JoinContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
