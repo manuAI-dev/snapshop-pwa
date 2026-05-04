@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 import { supabase } from "@/lib/supabase";
 
@@ -13,6 +13,8 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false);
   const { login, isLoading, error, clearError, checkSession } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
 
   useEffect(() => {
     checkSession();
@@ -22,8 +24,13 @@ export default function LoginPage() {
     e.preventDefault();
     try {
       await login(email, password);
-      const onboarded = localStorage.getItem("snapshop_onboarded");
-      router.push(onboarded ? "/rezepte" : "/onboarding");
+      if (redirectTo) {
+        // Redirect zurück zur aufrufenden Seite (z.B. /join?token=...)
+        router.push(redirectTo);
+      } else {
+        const onboarded = localStorage.getItem("snapshop_onboarded");
+        router.push(onboarded ? "/rezepte" : "/onboarding");
+      }
     } catch {}
   };
 
@@ -37,7 +44,7 @@ export default function LoginPage() {
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#212022" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <Link href="/register" style={{ color: '#F2894F', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>
+        <Link href={redirectTo ? `/register?redirect=${encodeURIComponent(redirectTo)}` : "/register"} style={{ color: '#F2894F', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>
           Registrieren
         </Link>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/stores/auth-store";
 
 export default function RegisterPage() {
@@ -15,6 +15,8 @@ export default function RegisterPage() {
   const [confirmEmail, setConfirmEmail] = useState(false);
   const { register, isLoading, error, clearError, checkSession } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
 
   useEffect(() => {
     checkSession();
@@ -25,7 +27,7 @@ export default function RegisterPage() {
     if (password !== passwordConfirm || !acceptTerms) return;
     try {
       await register(email, password, name);
-      router.push("/onboarding");
+      router.push(redirectTo || "/onboarding");
     } catch (err: any) {
       if (err?.message === "CONFIRM_EMAIL") {
         setConfirmEmail(true);
@@ -65,7 +67,7 @@ export default function RegisterPage() {
           style={{ width: 50, height: 50, borderRadius: '50%', border: '1px solid #DCDDDC', backgroundColor: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#212022" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <Link href="/login" style={{ color: '#F2894F', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>Login</Link>
+        <Link href={redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login"} style={{ color: '#F2894F', fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>Login</Link>
       </div>
 
       {/* Heading */}
@@ -121,7 +123,7 @@ export default function RegisterPage() {
 
       <p style={{ textAlign: 'center', fontSize: 13, color: '#9193A0', marginTop: 24 }}>
         Bereits registriert?{" "}
-        <Link href="/login" style={{ color: '#F2894F', fontWeight: 600, textDecoration: 'none' }}>Anmelden</Link>
+        <Link href={redirectTo ? `/login?redirect=${encodeURIComponent(redirectTo)}` : "/login"} style={{ color: '#F2894F', fontWeight: 600, textDecoration: 'none' }}>Anmelden</Link>
       </p>
     </div>
   );
