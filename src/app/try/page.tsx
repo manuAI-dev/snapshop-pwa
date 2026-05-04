@@ -120,7 +120,7 @@ export default function TryPage() {
   };
 
   const handleSkip = () => {
-    router.push("/login");
+    window.location.href = "/landing.html";
   };
 
   const handleSignup = () => {
