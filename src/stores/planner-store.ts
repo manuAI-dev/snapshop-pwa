@@ -97,12 +97,11 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
         .select("*")
         .order("date", { ascending: true });
 
-      if (householdId) {
-        // Alle Slots des Haushalts (inkl. eigene)
-        query = query.or(`user_id.eq.${user.id},household_id.eq.${householdId}`);
-      } else {
+      if (!householdId) {
+        // Kein Haushalt → nur eigene Slots
         query = query.eq("user_id", user.id);
       }
+      // Mit Haushalt: kein Filter — RLS gibt alle sichtbaren Slots zurück
 
       const { data: slots, error } = await query;
       if (error) throw error;

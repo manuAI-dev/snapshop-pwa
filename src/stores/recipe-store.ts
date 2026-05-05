@@ -236,12 +236,11 @@ export const useRecipeStore = create<RecipeStore>()(
         `)
         .order("created_at", { ascending: false });
 
-      if (householdId) {
-        // Alle Rezepte des Haushalts (inkl. eigene)
-        query = query.or(`user_id.eq.${session.user.id},household_id.eq.${householdId}`);
-      } else {
+      if (!householdId) {
+        // Kein Haushalt → nur eigene Rezepte
         query = query.eq("user_id", session.user.id);
       }
+      // Mit Haushalt: kein Filter — RLS gibt alle sichtbaren Rezepte zurück
 
       const { data: recipes, error } = await query;
 

@@ -135,20 +135,19 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         return;
       }
 
-      // Haushalt-Sharing: eigene Items + Items aller Haushaltsmitglieder
+      // Haushalt-Sharing: RLS regelt Sichtbarkeit automatisch
+      // (eigene Items + alle Items von Haushaltsmitgliedern)
       const householdId = await getUserHouseholdId();
       let query = supabase
         .from("shopping_items")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (householdId) {
-        // Lade alle Items des Haushalts + eigene ohne household_id (Fallback)
-        query = query.or(`household_id.eq.${householdId},and(user_id.eq.${user.id},household_id.is.null)`);
-      } else {
-        // Kein Haushalt → nur eigene Items
+      if (!householdId) {
+        // Kein Haushalt → nur eigene Items filtern
         query = query.eq("user_id", user.id);
       }
+      // Mit Haushalt: kein Filter nötig — RLS gibt alle sichtbaren Items zurück
 
       const { data: items, error } = await query;
 
