@@ -339,187 +339,215 @@ export default function TryPage() {
         <div style={{
           flex: 1, display: "flex", flexDirection: "column",
           paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
+          overflowY: "auto",
         }}>
-          {/* Hero Image */}
-          {preview && (
-            <div style={{ position: "relative", height: 220, overflow: "hidden" }}>
-              <img src={preview} alt={recipe.dishName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              <div style={{
-                position: "absolute", inset: 0,
-                background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 50%)",
-              }} />
-              <div style={{
-                position: "absolute", bottom: 16, left: 20, right: 20,
-              }}>
-                <h1 style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontSize: 24, fontWeight: 800, color: "white",
-                  textShadow: "0 2px 8px rgba(0,0,0,0.4)",
-                }}>
-                  {recipe.dishName}
-                </h1>
+          {/* Action Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '56px 20px 12px' }}>
+            <button
+              onClick={handleRetry}
+              style={{
+                width: 50, height: 50, borderRadius: '50%',
+                border: '1px solid #E8E0D8', backgroundColor: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, cursor: 'pointer',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#212022" strokeWidth="2"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
+            <div style={{ flex: 1 }} />
+            {/* Calendar */}
+            <button
+              onClick={handleSignup}
+              style={{
+                width: 44, height: 44, borderRadius: '50%',
+                border: '1px solid #E8E0D8', backgroundColor: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, cursor: 'pointer',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#525154" strokeWidth="2"><path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /></svg>
+            </button>
+            {/* Cart */}
+            <button
+              onClick={handleSignup}
+              style={{
+                width: 44, height: 44, borderRadius: '50%',
+                border: '1px solid #E8E0D8', backgroundColor: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, cursor: 'pointer',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#525154" strokeWidth="2"><circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" /><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" /></svg>
+            </button>
+            {/* Heart */}
+            <button
+              onClick={handleSignup}
+              style={{
+                width: 44, height: 44, borderRadius: '50%',
+                border: '1px solid #E8E0D8', backgroundColor: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, cursor: 'pointer',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#525154" strokeWidth="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>
+            </button>
+            {/* Bookmark */}
+            <button
+              onClick={handleSignup}
+              style={{
+                width: 44, height: 44, borderRadius: '50%',
+                border: '1px solid #E8E0D8', backgroundColor: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, cursor: 'pointer',
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#525154" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10l5 5v11a2 2 0 0 1-2 2z" /></svg>
+            </button>
+          </div>
+
+          {/* Profile Row - Guest */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', marginBottom: 16 }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', backgroundColor: '#F2894F', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: 'white', fontWeight: 700, fontSize: 16 }}>G</span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#212022' }}>Gast</p>
+              <p style={{ fontSize: 11, color: '#9193A0' }}>Demo-Modus</p>
+            </div>
+            {/* Empty stars (non-interactive) */}
+            <div style={{ display: 'flex', gap: 2 }}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <svg key={star} xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                  fill="#DCDDDC" stroke="#DCDDDC" strokeWidth="1">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              ))}
+            </div>
+          </div>
+
+          {/* Recipe Image Card with overlay */}
+          <div style={{ padding: '0 20px', marginBottom: 12 }}>
+            <div
+              style={{ borderRadius: 20, overflow: 'hidden', position: 'relative', height: 220, background: 'linear-gradient(135deg, #F2894F 0%, #CC3D10 100%)' }}
+            >
+              {preview && (
+                <img src={preview} alt={recipe.dishName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%)' }} />
+              <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16 }}>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 6 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                    {recipe.prepTime + recipe.cookTime} Min.
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'rgba(255,255,255,0.85)', fontSize: 12 }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+                    {recipe.servings} Personen
+                  </span>
+                </div>
+                <h1 style={{ fontSize: 20, fontWeight: 700, color: 'white', lineHeight: 1.2, fontFamily: "'Montserrat', sans-serif" }}>{recipe.dishName}</h1>
               </div>
+            </div>
+          </div>
+
+          {/* Meta-Chips */}
+          <div style={{ padding: '0 20px', marginBottom: 14, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {recipe.prepTime + recipe.cookTime > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, backgroundColor: 'white', fontSize: 12, fontWeight: 600, color: '#525154', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F2894F" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                {recipe.prepTime + recipe.cookTime} Min.
+              </span>
+            )}
+            {recipe.difficulty && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 20, backgroundColor: 'white', fontSize: 12, fontWeight: 600, color: '#525154', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F2894F" strokeWidth="2"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838.838-2.872a2 2 0 0 1 .506-.855z"/></svg>
+                {recipe.difficulty === "easy" ? "Einfach" : recipe.difficulty === "medium" ? "Mittel" : recipe.difficulty === "hard" ? "Anspruchsvoll" : recipe.difficulty}
+              </span>
+            )}
+          </div>
+
+          {/* Description */}
+          {recipe.description && (
+            <div style={{ padding: '0 20px', marginBottom: 16 }}>
+              <p style={{
+                fontSize: 14, color: '#525154', lineHeight: 1.65,
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontStyle: 'italic',
+              }}>
+                {recipe.description}
+              </p>
             </div>
           )}
 
-          {/* Recipe Content */}
-          <div style={{ padding: "16px 20px", flex: 1 }}>
-            {/* Meta badges */}
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-              {recipe.prepTime + recipe.cookTime > 0 && (
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: 4,
-                  padding: "6px 12px", borderRadius: 20,
-                  backgroundColor: "#FEF1E8", fontSize: 12, fontWeight: 600, color: "#F2894F",
-                }}>
-                  {recipe.prepTime + recipe.cookTime} Min.
-                </span>
-              )}
-              <span style={{
-                padding: "6px 12px", borderRadius: 20,
-                backgroundColor: "#FEF1E8", fontSize: 12, fontWeight: 600, color: "#F2894F",
-              }}>
-                {recipe.servings} Portionen
-              </span>
-              {recipe.difficulty && (
-                <span style={{
-                  padding: "6px 12px", borderRadius: 20,
-                  backgroundColor: "#FEF1E8", fontSize: 12, fontWeight: 600, color: "#F2894F",
-                }}>
-                  {recipe.difficulty === "easy" ? "Einfach" : recipe.difficulty === "hard" ? "Anspruchsvoll" : "Mittel"}
-                </span>
-              )}
-            </div>
+          {/* Nutrition Card with circular progress rings */}
+          {recipe.nutrition && recipe.nutrition.calories > 0 && (
+            <GuestNutritionCard nutrition={recipe.nutrition} servings={recipe.servings} />
+          )}
 
-            {/* Description */}
-            {recipe.description && (
-              <p style={{ fontSize: 14, color: "#555", lineHeight: 1.5, marginBottom: 20 }}>
-                {recipe.description}
-              </p>
-            )}
-
-            {/* Ingredients */}
-            <h3 style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontSize: 16, fontWeight: 700, color: "#4B164C", marginBottom: 10,
-            }}>
-              Zutaten
-            </h3>
+          {/* Ingredients Card */}
+          <div style={{ padding: '0 16px', marginTop: 8 }}>
             <div style={{
-              backgroundColor: "white", borderRadius: 14, padding: 16,
-              marginBottom: 20, boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+              backgroundColor: 'white', borderRadius: 20, padding: '20px 16px',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
             }}>
-              {recipe.ingredients.map((ing, i) => (
-                <div key={i} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "8px 0",
-                  borderBottom: i < recipe.ingredients.length - 1 ? "1px solid #F5F5F5" : "none",
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 20, fontWeight: 700, color: '#4B164C', margin: 0 }}>Zutaten</h2>
+                <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#F2894F', borderRadius: 30 }}>
+                  <button onClick={() => {}} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 18, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}>−</button>
+                  <span style={{ color: 'white', fontSize: 12, fontWeight: 600, minWidth: 70, textAlign: 'center' }}>{recipe.servings} Pers.</span>
+                  <button onClick={() => {}} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 18, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}>+</button>
+                </div>
+              </div>
+
+              {recipe.ingredients.map((ing, idx) => (
+                <div key={idx} style={{
+                  display: 'flex', alignItems: 'center',
+                  padding: '10px 0',
+                  borderBottom: idx < recipe.ingredients.length - 1 ? '1px solid #F5F0EB' : 'none',
                 }}>
-                  <span style={{ fontSize: 14, color: "#333" }}>{ing.name}</span>
-                  <span style={{ fontSize: 13, color: "#9193A0", fontWeight: 500 }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: '#212022', flex: 1, lineHeight: 1.4 }}>{ing.name}</span>
+                  <span style={{ fontSize: 13, color: '#9193A0', fontWeight: 500, whiteSpace: 'nowrap' }}>
                     {ing.quantity} {ing.unit}
                   </span>
                 </div>
               ))}
             </div>
+          </div>
 
-            {/* Instructions */}
-            <h3 style={{
-              fontFamily: "'Montserrat', sans-serif",
-              fontSize: 16, fontWeight: 700, color: "#4B164C", marginBottom: 10,
-            }}>
-              Zubereitung
-            </h3>
-            <div style={{
-              backgroundColor: "white", borderRadius: 14, padding: 16,
-              marginBottom: 24, boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
-            }}>
-              {recipe.instructions.map((step, i) => (
-                <div key={i} style={{
-                  display: "flex", gap: 12, padding: "10px 0",
-                  borderBottom: i < recipe.instructions.length - 1 ? "1px solid #F5F5F5" : "none",
+          {/* Instructions */}
+          <div style={{ padding: '0 16px', marginTop: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 4, paddingRight: 4, marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 20, fontWeight: 700, color: '#4B164C', margin: 0 }}>Zubereitung</h2>
+                <p style={{ fontSize: 12, color: '#9193A0', marginTop: 2 }}>{recipe.instructions.length} Schritte</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {recipe.instructions.map((step, idx) => (
+                <div key={idx} style={{
+                  backgroundColor: 'white', borderRadius: 16, padding: '14px 16px',
+                  boxShadow: '0 1px 8px rgba(0,0,0,0.04)',
+                  display: 'flex', gap: 12, alignItems: 'flex-start',
                 }}>
-                  <div style={{
-                    width: 24, height: 24, borderRadius: "50%",
-                    backgroundColor: "#F2894F", color: "white",
-                    fontSize: 12, fontWeight: 700,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0, marginTop: 2,
-                  }}>
-                    {i + 1}
-                  </div>
-                  <p style={{ fontSize: 14, color: "#333", lineHeight: 1.5, flex: 1 }}>
-                    {step}
-                  </p>
+                  <span style={{
+                    fontSize: 13, fontWeight: 700, color: '#D4C9BF',
+                    fontFamily: "'Montserrat', sans-serif",
+                    minWidth: 20, paddingTop: 1,
+                  }}>{idx + 1}</span>
+                  <p style={{
+                    fontSize: 14, color: '#3A3A3C', lineHeight: 1.65, margin: 0,
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}>{step}</p>
                 </div>
               ))}
             </div>
+          </div>
 
-            {/* ===== Nährwerte ===== */}
-            {recipe.nutrition && (
-              <>
-                <h3 style={{
-                  fontFamily: "'Montserrat', sans-serif",
-                  fontSize: 16, fontWeight: 700, color: "#4B164C", marginBottom: 10,
-                }}>
-                  Nährwerte <span style={{ fontSize: 12, fontWeight: 400, color: "#9193A0" }}>pro Portion</span>
-                </h3>
-                <div style={{
-                  display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8,
-                  marginBottom: 24,
-                }}>
-                  {[
-                    { label: "Kalorien", value: recipe.nutrition.calories, unit: "kcal", color: "#F2894F" },
-                    { label: "Protein", value: recipe.nutrition.protein, unit: "g", color: "#4B164C" },
-                    { label: "Kohlenh.", value: recipe.nutrition.carbs, unit: "g", color: "#E8A87C" },
-                    { label: "Fett", value: recipe.nutrition.fat, unit: "g", color: "#9193A0" },
-                  ].map((n) => (
-                    <div key={n.label} style={{
-                      backgroundColor: "white", borderRadius: 14, padding: "14px 8px",
-                      textAlign: "center", boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
-                    }}>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: n.color }}>
-                        {n.value || "—"}
-                      </div>
-                      <div style={{ fontSize: 10, color: "#9193A0", marginTop: 2 }}>{n.unit}</div>
-                      <div style={{ fontSize: 11, color: "#555", marginTop: 4, fontWeight: 600 }}>{n.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* ===== Aktions-Buttons (führen zu Signup) ===== */}
-            <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-              <button
-                onClick={handleSignup}
-                style={{
-                  flex: 1, padding: "14px 12px", borderRadius: 14,
-                  border: "none", backgroundColor: "#F2894F",
-                  fontSize: 13, fontWeight: 700, color: "white",
-                  cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
-                Speichern
-              </button>
-              <button
-                onClick={handleSignup}
-                style={{
-                  flex: 1, padding: "14px 12px", borderRadius: 14,
-                  border: "none", backgroundColor: "#4B164C",
-                  fontSize: 13, fontWeight: 700, color: "white",
-                  cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                Einkaufsliste
-              </button>
-            </div>
-
-            {/* ===== CTA: Account erstellen ===== */}
+          {/* ===== CTA: Account erstellen ===== */}
+          <div style={{
+            padding: '0 20px', marginTop: 24,
+          }}>
             <div style={{
               backgroundColor: "#4B164C", borderRadius: 20, padding: "24px 20px",
               textAlign: "center",
@@ -561,11 +589,11 @@ export default function TryPage() {
               </button>
             </div>
 
-            {/* Nochmal versuchen */}
+            {/* Anderes Rezept ausprobieren */}
             <button
               onClick={handleRetry}
               style={{
-                marginTop: 16, width: "100%", padding: "12px",
+                marginTop: 16, marginBottom: 24, width: "100%", padding: "12px",
                 background: "none", border: "1.5px solid #DCDDDC",
                 borderRadius: 14, fontSize: 14, fontWeight: 600,
                 color: "#555", cursor: "pointer",
@@ -577,6 +605,136 @@ export default function TryPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ============================================================
+   Guest Nutrition Card — 4 circular progress rings
+   ============================================================ */
+function GuestNutritionCard({ nutrition, servings }: {
+  nutrition: any;
+  servings: number;
+}) {
+  const [showInsight, setShowInsight] = useState(false);
+  const cal = Math.round(nutrition.calories || 0);
+  const protein = Math.round(nutrition.protein || 0);
+  const fat = Math.round(nutrition.fat || 0);
+  const carbs = Math.round(nutrition.carbs || 0);
+
+  const dailyRef = { calories: 2000, protein: 50, fat: 65, carbs: 300 };
+
+  const items = [
+    { label: "Kalorien", value: cal, unit: "kcal", color: "#F2894F", daily: dailyRef.calories },
+    { label: "Protein", value: protein, unit: "g", color: "#4CAF50", daily: dailyRef.protein },
+    { label: "Fett", value: fat, unit: "g", color: "#FFB74D", daily: dailyRef.fat },
+    { label: "Carbs", value: carbs, unit: "g", color: "#7C4DFF", daily: dailyRef.carbs },
+  ];
+
+  const calPct = Math.round((cal / dailyRef.calories) * 100);
+  const proteinPct = Math.round((protein / dailyRef.protein) * 100);
+  const isHighProtein = proteinPct > 40;
+  const isLowCal = calPct < 20;
+  const isHighCal = calPct > 40;
+
+  let insight = "";
+  if (isHighProtein && !isHighCal) {
+    insight = `Proteinreich (${proteinPct}% Tagesbedarf) bei moderaten Kalorien — gut für Muskelaufbau und Sättigung.`;
+  } else if (isLowCal) {
+    insight = `Leichte Mahlzeit mit nur ${calPct}% des Tagesbedarfs an Kalorien. Ideal als Vorspeise oder leichtes Abendessen.`;
+  } else if (isHighCal) {
+    insight = `Gehaltvollere Mahlzeit mit ${calPct}% des Tagesbedarfs. Ideal als Hauptmahlzeit — die anderen Mahlzeiten dürfen leichter ausfallen.`;
+  } else {
+    insight = `Ausgewogene Mahlzeit mit ${calPct}% des Tagesbedarfs an Kalorien und ${proteinPct}% des Proteins.`;
+  }
+
+  return (
+    <div style={{ padding: '0 20px', marginBottom: 20 }}>
+      <div style={{
+        backgroundColor: 'white', borderRadius: 20, padding: '20px 16px',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+      }}>
+        <p style={{
+          fontFamily: "'Montserrat', sans-serif", fontSize: 13, fontWeight: 700,
+          color: '#F2894F', textTransform: 'uppercase', letterSpacing: 1.2,
+          marginBottom: 16,
+        }}>
+          Nährwerte pro Portion
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+          {items.map((item) => {
+            const pct = Math.min(100, (item.value / item.daily) * 100);
+            const r = 28;
+            const circ = 2 * Math.PI * r;
+            const offset = circ - (pct / 100) * circ;
+            return (
+              <div key={item.label} style={{ textAlign: 'center', flex: 1 }}>
+                <div style={{ position: 'relative', width: 64, height: 64, margin: '0 auto 8px' }}>
+                  <svg width="64" height="64" viewBox="0 0 64 64">
+                    <circle cx="32" cy="32" r={r} fill="none" stroke="#F0E8E1" strokeWidth="5" />
+                    <circle
+                      cx="32" cy="32" r={r} fill="none"
+                      stroke={item.color} strokeWidth="5"
+                      strokeLinecap="round"
+                      strokeDasharray={circ}
+                      strokeDashoffset={offset}
+                      transform="rotate(-90 32 32)"
+                      style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+                    />
+                  </svg>
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#1E1F28', lineHeight: 1 }}>{item.value}</span>
+                    <span style={{ fontSize: 9, color: '#9193A0', lineHeight: 1, marginTop: 1 }}>{item.unit}</span>
+                  </div>
+                </div>
+                <span style={{ fontSize: 11, color: '#9193A0', fontWeight: 500 }}>{item.label}</span>
+                <span style={{ fontSize: 9, color: '#C4C4C4', display: 'block', marginTop: 2 }}>{Math.round((item.value / item.daily) * 100)}%</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <p style={{ fontSize: 10, color: '#C4C4C4', textAlign: 'center', marginTop: 12 }}>
+          % vom Tagesbedarf (Basis: 2000 kcal)
+        </p>
+
+        <button
+          onClick={() => setShowInsight(!showInsight)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            width: '100%', padding: '10px 0 0', marginTop: 8,
+            background: 'none', border: 'none', cursor: 'pointer',
+            borderTop: '1px solid #F0E8E1',
+          }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F2894F" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+          <span style={{ fontSize: 12, color: '#F2894F', fontWeight: 600 }}>
+            {showInsight ? "Einschätzung ausblenden" : "Einschätzung anzeigen"}
+          </span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F2894F" strokeWidth="2.5">
+            <path d={showInsight ? "m18 15-6-6-6 6" : "m6 9 6 6 6-6"} />
+          </svg>
+        </button>
+        {showInsight && (
+          <div style={{
+            marginTop: 10, padding: '12px 14px', borderRadius: 12,
+            backgroundColor: '#FEF8F4',
+          }}>
+            <p style={{ fontSize: 13, color: '#525154', lineHeight: 1.5, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              {insight}
+            </p>
+            <p style={{ fontSize: 10, color: '#C4C4C4', marginTop: 8 }}>
+              Nährwerte sind AI-geschätzt und dienen als Orientierung.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
