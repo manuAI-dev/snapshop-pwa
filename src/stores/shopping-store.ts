@@ -143,8 +143,8 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         .order("created_at", { ascending: false });
 
       if (householdId) {
-        // Lade alle Items des Haushalts (inkl. eigene)
-        query = query.eq("household_id", householdId);
+        // Lade alle Items des Haushalts + eigene ohne household_id (Fallback)
+        query = query.or(`household_id.eq.${householdId},and(user_id.eq.${user.id},household_id.is.null)`);
       } else {
         // Kein Haushalt → nur eigene Items
         query = query.eq("user_id", user.id);

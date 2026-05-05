@@ -12,7 +12,7 @@ import { PwaInstallBanner } from "@/components/ui/pwa-install-prompt";
 export default function KontoPage() {
   const { user, logout } = useAuthStore();
   // recipes removed - stats row no longer shown
-  const { household, members, invites, isLoading: hhLoading, loadHousehold, createHousehold, updateHouseholdProfile, generateInviteLink, joinByCode, removeMember, leaveHousehold, deleteHousehold, error: hhError, clearError: clearHhError } = useHouseholdStore();
+  const { household, members, invites, isLoading: hhLoading, loadHousehold, createHousehold, updateHouseholdProfile, generateInviteLink, joinByCode, removeMember, leaveHousehold, deleteHousehold, revokeInvite, error: hhError, clearError: clearHhError } = useHouseholdStore();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -350,6 +350,13 @@ export default function KontoPage() {
                     <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#FFE082' }} />
                     <span style={{ fontSize: 13, color: '#525154', flex: 1 }}>{inv.email || 'Link-Einladung'}</span>
                     <span style={{ fontSize: 11, color: '#C0C0C0' }}>ausstehend</span>
+                    <button
+                      onClick={() => { if (confirm('Einladung widerrufen?')) revokeInvite(inv.id); }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#C0C0C0', lineHeight: 1 }}
+                      title="Einladung löschen"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                   </div>
                 ))}
               </div>

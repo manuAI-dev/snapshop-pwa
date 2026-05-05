@@ -22,6 +22,7 @@ interface HouseholdStore {
   joinByCode: (code: string) => Promise<void>;
   joinByToken: (token: string) => Promise<void>;
   removeMember: (userId: string) => Promise<void>;
+  revokeInvite: (inviteId: string) => Promise<void>;
   leaveHousehold: () => Promise<void>;
   clearError: () => void;
 }
@@ -111,28 +112,38 @@ export const useHouseholdStore = create<HouseholdStore>((set, get) => ({
 
       const household = dbToHousehold(householdRow);
 
-      // Mitglieder laden (mit Profil-Daten)
-      let memberRows: any[] = [];
-      const { data: mWithProfiles, error: mErr } = await supabase
+      // Mitglieder laden
+      const { data: memberRows } = await supabase
         .from("household_members")
-        .select("*, profiles(name, email, profile_image)")
+        .select("*")
         .eq("household_id", household.id)
         .order("joined_at", { ascending: true });
 
-      if (!mErr && mWithProfiles) {
-        memberRows = mWithProfiles;
-      } else {
-        // Fallback: Mitglieder ohne Profil-Join laden
-        console.warn("[loadHousehold] Profile join failed, loading without profiles:", mErr);
-        const { data: mBasic } = await supabase
-          .from("household_members")
-          .select("*")
-          .eq("household_id", household.id)
-          .order("joined_at", { ascending: true });
-        memberRows = mBasic || [];
-      }
+      const rawMembers = memberRows || [];
 
-      const members = memberRows.map(dbToMember);
+      // Profile separat laden (zuverlässiger als FK-Join)
+      const userIds = rawMembers.map((m: any) => m.user_id);
+      const { data: profileRows } = await supabase
+        .from("profiles")
+        .select("id, name, email, profile_image")
+        .in("id", userIds);
+
+      const profileMap = new Map<string, any>();
+      (profileRows || []).forEach((p: any) => profileMap.set(p.id, p));
+
+      const members = rawMembers.map((row: any) => {
+        const profile = profileMap.get(row.user_id);
+        return {
+          id: row.id,
+          householdId: row.household_id,
+          userId: row.user_id,
+          role: row.role,
+          joinedAt: row.joined_at,
+          name: profile?.name || undefined,
+          email: profile?.email || undefined,
+          profileImage: profile?.profile_image || undefined,
+        } as HouseholdMember;
+      });
 
       // Einladungen laden (nur pending)
       const { data: inviteRows } = await supabase
@@ -452,6 +463,20 @@ export const useHouseholdStore = create<HouseholdStore>((set, get) => ({
 
       if (error) throw error;
       set((state) => ({ members: state.members.filter((m) => m.userId !== userId) }));
+    } catch (err: any) {
+      set({ error: err.message });
+    }
+  },
+
+  revokeInvite: async (inviteId) => {
+    try {
+      const { error } = await supabase
+        .from("household_invites")
+        .delete()
+        .eq("id", inviteId);
+
+      if (error) throw error;
+      set((state) => ({ invites: state.invites.filter((i) => i.id !== inviteId) }));
     } catch (err: any) {
       set({ error: err.message });
     }
