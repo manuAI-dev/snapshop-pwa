@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { Recipe, IngredientCategory, categoryLabels } from "@/types";
 import { ShoppingItem, ShoppingCategory, ShoppingRecipeGroup } from "@/types/shopping";
 import { supabase } from "@/lib/supabase";
+import { getUserHouseholdId } from "@/lib/utils";
 
 // ─── Quantity Helpers ────────────────────────────────────────
 // Parst "1", "1.5", "1,5", "1/2", "200" → Zahl
@@ -134,10 +135,22 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         return;
       }
 
-      const { data: items, error } = await supabase
+      // Haushalt-Sharing: eigene Items + Items aller Haushaltsmitglieder
+      const householdId = await getUserHouseholdId();
+      let query = supabase
         .from("shopping_items")
         .select("*")
         .order("created_at", { ascending: false });
+
+      if (householdId) {
+        // Lade alle Items des Haushalts (inkl. eigene)
+        query = query.eq("household_id", householdId);
+      } else {
+        // Kein Haushalt → nur eigene Items
+        query = query.eq("user_id", user.id);
+      }
+
+      const { data: items, error } = await query;
 
       if (error) throw error;
 
@@ -182,10 +195,11 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         return;
       }
 
+      const householdId = await getUserHouseholdId();
       const res = await fetch("/api/shopping/batch-add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: itemsToInsert, userId: session.user.id }),
+        body: JSON.stringify({ items: itemsToInsert, userId: session.user.id, householdId }),
       });
       if (!res.ok) {
         set({ isLoading: false });
@@ -402,11 +416,13 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) throw new Error("Not authenticated");
 
+      const householdId = await getUserHouseholdId();
       const res = await fetch("/api/shopping/batch-add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: session.user.id,
+          householdId,
           items: [{ name, quantity, unit, category: "other" }],
         }),
       });

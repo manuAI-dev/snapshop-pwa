@@ -90,12 +90,21 @@ export const usePlannerStore = create<PlannerStore>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { set({ slots: [], isLoading: false }); return; }
 
-      const { data: slots, error } = await supabase
+      // Haushalt-Sharing: eigene Slots + alle Haushalt-Slots
+      const householdId = await getUserHouseholdId();
+      let query = supabase
         .from("meal_slots")
         .select("*")
-        .eq("user_id", user.id)
         .order("date", { ascending: true });
 
+      if (householdId) {
+        // Alle Slots des Haushalts (inkl. eigene)
+        query = query.or(`user_id.eq.${user.id},household_id.eq.${householdId}`);
+      } else {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { data: slots, error } = await query;
       if (error) throw error;
       set({ slots: (slots || []).map(dbToMealSlot), isLoading: false });
     } catch {

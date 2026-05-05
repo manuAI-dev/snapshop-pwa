@@ -225,7 +225,9 @@ export const useRecipeStore = create<RecipeStore>()(
       }
 
       // Schlanker Query: nur Listenfelder, KEIN ingredients-JOIN, KEINE Bilder
-      const { data: recipes, error } = await supabase
+      // Haushalt-Sharing: eigene Rezepte + alle Haushalt-Rezepte
+      const householdId = await getUserHouseholdId();
+      let query = supabase
         .from("recipes")
         .select(`
           id, dish_name, cuisine, description, servings,
@@ -233,6 +235,15 @@ export const useRecipeStore = create<RecipeStore>()(
           thumbnail, source_url, user_id, created_at, updated_at
         `)
         .order("created_at", { ascending: false });
+
+      if (householdId) {
+        // Alle Rezepte des Haushalts (inkl. eigene)
+        query = query.or(`user_id.eq.${session.user.id},household_id.eq.${householdId}`);
+      } else {
+        query = query.eq("user_id", session.user.id);
+      }
+
+      const { data: recipes, error } = await query;
 
       if (error) throw error;
 

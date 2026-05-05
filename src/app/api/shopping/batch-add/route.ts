@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   );
 
   try {
-    const { items, userId } = await req.json();
+    const { items, userId, householdId } = await req.json();
 
     if (!userId || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -39,8 +39,9 @@ export async function POST(req: NextRequest) {
         recipe_id: item.recipe_id || null,
         recipe_name: item.recipe_name || null,
       };
-      // household_id nur setzen wenn vorhanden (Spalte existiert evtl. nicht)
-      if (item.household_id) row.household_id = item.household_id;
+      // household_id: top-level oder pro Item
+      const hhId = householdId || item.household_id;
+      if (hhId) row.household_id = hhId;
       return row;
     });
 
