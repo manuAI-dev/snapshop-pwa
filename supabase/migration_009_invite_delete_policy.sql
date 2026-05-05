@@ -1,18 +1,21 @@
 -- ============================================================
--- SnapShop: Fix household_invites INSERT + add DELETE policy
+-- SnapShop: Invite permissions — only owner can invite/delete
 -- Migration 009
 --
--- Probleme:
--- 1) Mitglieder können keine Einladungen erstellen (INSERT Policy zu restriktiv)
--- 2) Einladungen können nicht gelöscht/widerrufen werden (keine DELETE Policy)
+-- Nur der Haushalt-Owner darf Einladungen erstellen und löschen.
+-- Mitglieder sind Nutzniesser ohne Verwaltungsrechte.
 -- ============================================================
 
--- Fix INSERT: Alle eingeloggten Haushaltsmitglieder können einladen
+-- INSERT: Nur Owner des Haushalts kann einladen
 DROP POLICY IF EXISTS "invites_insert" ON household_invites;
 CREATE POLICY "invites_insert" ON household_invites
-  FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+  FOR INSERT WITH CHECK (
+    household_id IN (SELECT id FROM households WHERE owner_id = auth.uid())
+  );
 
--- Add DELETE: Einladungen können widerrufen werden
+-- DELETE: Nur Owner kann Einladungen widerrufen
 DROP POLICY IF EXISTS "invites_delete" ON household_invites;
 CREATE POLICY "invites_delete" ON household_invites
-  FOR DELETE USING (auth.uid() IS NOT NULL);
+  FOR DELETE USING (
+    household_id IN (SELECT id FROM households WHERE owner_id = auth.uid())
+  );

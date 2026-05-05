@@ -342,7 +342,7 @@ export default function KontoPage() {
               )}
             </div>
 
-            {invites.length > 0 && (
+            {household.ownerId === user?.id && invites.length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#9193A0', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Offene Einladungen</p>
                 {invites.map((inv) => (
@@ -363,12 +363,14 @@ export default function KontoPage() {
             )}
 
             <div style={{ display: 'flex', gap: 8 }}>
+              {household.ownerId === user?.id && (
               <button onClick={() => setShowHhInvite(true)}
                 style={{ flex: 1, padding: '12px 0', borderRadius: 12, backgroundColor: '#F2894F', color: 'white', fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                 Einladen
               </button>
+              )}
               <button
                 onClick={() => { household.ownerId === user?.id ? (confirm('Haushalt wirklich löschen?') && deleteHousehold()) : (confirm('Haushalt verlassen?') && leaveHousehold()); }}
                 style={{ padding: '12px 16px', borderRadius: 12, backgroundColor: 'rgba(230,73,73,0.08)', color: '#E64949', fontWeight: 600, fontSize: 13, border: 'none', cursor: 'pointer', fontFamily: "'Plus Jakarta Sans', sans-serif" }}
