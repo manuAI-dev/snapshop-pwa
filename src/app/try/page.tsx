@@ -455,7 +455,71 @@ export default function TryPage() {
               ))}
             </div>
 
-            {/* ===== CTA: Rezept behalten ===== */}
+            {/* ===== Nährwerte ===== */}
+            {recipe.nutrition && (
+              <>
+                <h3 style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontSize: 16, fontWeight: 700, color: "#4B164C", marginBottom: 10,
+                }}>
+                  Nährwerte <span style={{ fontSize: 12, fontWeight: 400, color: "#9193A0" }}>pro Portion</span>
+                </h3>
+                <div style={{
+                  display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8,
+                  marginBottom: 24,
+                }}>
+                  {[
+                    { label: "Kalorien", value: recipe.nutrition.calories, unit: "kcal", color: "#F2894F" },
+                    { label: "Protein", value: recipe.nutrition.protein, unit: "g", color: "#4B164C" },
+                    { label: "Kohlenh.", value: recipe.nutrition.carbs, unit: "g", color: "#E8A87C" },
+                    { label: "Fett", value: recipe.nutrition.fat, unit: "g", color: "#9193A0" },
+                  ].map((n) => (
+                    <div key={n.label} style={{
+                      backgroundColor: "white", borderRadius: 14, padding: "14px 8px",
+                      textAlign: "center", boxShadow: "0 1px 6px rgba(0,0,0,0.06)",
+                    }}>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: n.color }}>
+                        {n.value || "—"}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#9193A0", marginTop: 2 }}>{n.unit}</div>
+                      <div style={{ fontSize: 11, color: "#555", marginTop: 4, fontWeight: 600 }}>{n.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* ===== Aktions-Buttons (führen zu Signup) ===== */}
+            <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+              <button
+                onClick={handleSignup}
+                style={{
+                  flex: 1, padding: "14px 12px", borderRadius: 14,
+                  border: "none", backgroundColor: "#F2894F",
+                  fontSize: 13, fontWeight: 700, color: "white",
+                  cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                Speichern
+              </button>
+              <button
+                onClick={handleSignup}
+                style={{
+                  flex: 1, padding: "14px 12px", borderRadius: 14,
+                  border: "none", backgroundColor: "#4B164C",
+                  fontSize: 13, fontWeight: 700, color: "white",
+                  cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                Einkaufsliste
+              </button>
+            </div>
+
+            {/* ===== CTA: Account erstellen ===== */}
             <div style={{
               backgroundColor: "#4B164C", borderRadius: 20, padding: "24px 20px",
               textAlign: "center",
