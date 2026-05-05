@@ -156,6 +156,13 @@ export const useHouseholdStore = create<HouseholdStore>((set, get) => ({
       const invites = (inviteRows || []).map(dbToInvite);
 
       set({ household, members, invites, isLoading: false });
+
+      // Background: ensure all user data has household_id assigned
+      fetch("/api/household/sync-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, householdId: household.id }),
+      }).catch(() => {}); // Fire-and-forget
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
     }
