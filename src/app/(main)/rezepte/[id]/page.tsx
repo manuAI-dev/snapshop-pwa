@@ -1212,71 +1212,90 @@ function CookingModeOverlay({ steps, currentStep, dishName, ingredients, multipl
         </div>
       </div>
 
-      {/* Step content — swipeable + tap zones (Insta-Style) */}
+      {/* Step content — scrollable, swipeable */}
       <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         style={{
           flex: 1, display: 'flex', flexDirection: 'column',
-          justifyContent: 'center', padding: '0 28px',
+          padding: '0 28px',
           transform: `translateX(${swipeOffset}px)`,
           transition: isAnimating ? 'transform 0.2s ease' : 'none',
           overflow: 'hidden', position: 'relative',
+          minHeight: 0,
         }}
       >
-        {/* Invisible tap zones — left = back, right = forward (Insta-Style) */}
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', zIndex: 1 }}>
-          <div onClick={() => handleTapZone("left")} style={{ width: '30%', height: '100%', cursor: 'pointer' }} />
-          <div style={{ flex: 1 }} />
-          <div onClick={() => handleTapZone("right")} style={{ width: '70%', height: '100%', cursor: 'pointer' }} />
-        </div>
+        {/* Tap zones — narrow side strips so scrolling works */}
+        <div onClick={() => handleTapZone("left")} style={{
+          position: 'absolute', left: 0, top: 0, bottom: 0, width: 28,
+          zIndex: 2, cursor: 'pointer',
+        }} />
+        <div onClick={() => handleTapZone("right")} style={{
+          position: 'absolute', right: 0, top: 0, bottom: 0, width: 28,
+          zIndex: 2, cursor: 'pointer',
+        }} />
 
-        {/* Step number */}
-        <div style={{ marginBottom: 12, position: 'relative', zIndex: 0 }}>
-          <span style={{
-            fontSize: 14, fontWeight: 700, color: '#F2894F',
-            letterSpacing: 1, textTransform: 'uppercase',
-          }}>
-            Schritt {currentStep + 1} von {total}
-          </span>
-        </div>
-
-        {/* Ingredients for this step */}
-        {(() => {
-          const stepIngredients = getIngredientsForStep(steps[currentStep], ingredients);
-          if (stepIngredients.length === 0) return null;
-          return (
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', gap: 6,
-              marginBottom: 20, position: 'relative', zIndex: 0,
-            }}>
-              {stepIngredients.map((ing, i) => (
-                <span key={i} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '5px 10px', borderRadius: 8,
-                  backgroundColor: 'rgba(242, 137, 79, 0.15)',
-                  fontSize: 12, fontWeight: 600, color: '#F2894F',
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                }}>
-                  <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>
-                    {multiplier !== 1 ? adjustQuantity(ing.quantity, multiplier) : ing.quantity} {ing.unit}
-                  </span>
-                  {ing.name}
-                </span>
-              ))}
-            </div>
-          );
-        })()}
-
-        {/* Step text — large and readable */}
-        <p style={{
-          fontSize: 24, fontWeight: 500, color: 'white',
-          lineHeight: 1.55, margin: 0, position: 'relative', zIndex: 0,
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
+        {/* Scrollable content area */}
+        <div style={{
+          flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+          paddingTop: 16, paddingBottom: 20,
+          display: 'flex', flexDirection: 'column',
         }}>
-          {steps[currentStep]}
-        </p>
+          {/* Step number */}
+          <div style={{ marginBottom: 14, flexShrink: 0 }}>
+            <span style={{
+              fontSize: 14, fontWeight: 700, color: '#F2894F',
+              letterSpacing: 1, textTransform: 'uppercase',
+            }}>
+              Schritt {currentStep + 1} von {total}
+            </span>
+          </div>
+
+          {/* Ingredients for this step */}
+          {(() => {
+            const stepIngredients = getIngredientsForStep(steps[currentStep], ingredients);
+            if (stepIngredients.length === 0) return null;
+            return (
+              <div style={{
+                display: 'flex', flexWrap: 'wrap', gap: 6,
+                marginBottom: 20, flexShrink: 0,
+                padding: '10px 12px', borderRadius: 12,
+                backgroundColor: 'rgba(255,255,255,0.05)',
+              }}>
+                <span style={{
+                  width: '100%', fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.35)',
+                  textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4,
+                }}>
+                  Zutaten für diesen Schritt
+                </span>
+                {stepIngredients.map((ing, i) => (
+                  <span key={i} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '5px 10px', borderRadius: 8,
+                    backgroundColor: 'rgba(242, 137, 79, 0.15)',
+                    fontSize: 12, fontWeight: 600, color: '#F2894F',
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}>
+                    <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>
+                      {multiplier !== 1 ? adjustQuantity(ing.quantity, multiplier) : ing.quantity} {ing.unit}
+                    </span>
+                    {ing.name}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Step text — large and readable */}
+          <p style={{
+            fontSize: 22, fontWeight: 500, color: 'white',
+            lineHeight: 1.6, margin: 0,
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+          }}>
+            {steps[currentStep]}
+          </p>
+        </div>
       </div>
 
       {/* Bottom navigation */}
