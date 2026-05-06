@@ -25,7 +25,7 @@ function getSourceFromUrl(url?: string): { id: string; name: string; color: stri
 
 export default function RezeptePage() {
   const { recipes, isLoading, loadRecipes, updateRecipe } = useRecipeStore();
-  const { lists, createList, deleteList, renameList } = useRecipeListStore();
+  const { lists, loadLists, createList, deleteList, renameList } = useRecipeListStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -47,7 +47,8 @@ export default function RezeptePage() {
 
   useEffect(() => {
     loadRecipes();
-  }, [loadRecipes]);
+    loadLists();
+  }, [loadRecipes, loadLists]);
 
   useEffect(() => {
     if (showNewListSheet && newListInputRef.current) {

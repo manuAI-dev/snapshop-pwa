@@ -45,7 +45,7 @@ export default function RecipeDetailPage() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { useFeature: useSubFeature } = useSubscriptionStore();
-  const { lists, addRecipeToList, removeRecipeFromList, createList, getListsForRecipe } = useRecipeListStore();
+  const { lists, loadLists, addRecipeToList, removeRecipeFromList, createList, getListsForRecipe } = useRecipeListStore();
 
   const showToast = (msg: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -62,7 +62,8 @@ export default function RecipeDetailPage() {
 
   useEffect(() => {
     if (recipes.length === 0) loadRecipes();
-  }, [recipes.length, loadRecipes]);
+    loadLists();
+  }, [recipes.length, loadRecipes, loadLists]);
 
   const recipe: Recipe | undefined =
     recipes.find((r) => r.id === params.id) ||
