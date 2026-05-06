@@ -10,7 +10,7 @@ export default function DebugShopPage() {
 
   // Load the store just like the real page does
   useEffect(() => {
-    loadShoppingList().then(() => setStoreLoaded(true));
+    loadShoppingList(); setStoreLoaded(true);
   }, [loadShoppingList]);
 
   useEffect(() => {
