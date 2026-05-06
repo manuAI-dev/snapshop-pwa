@@ -135,25 +135,12 @@ export const useShoppingStore = create<ShoppingStore>((set) => ({
         return;
       }
 
-      // Haushalt-Sharing: RLS regelt Sichtbarkeit automatisch
-      // (eigene Items + alle Items von Haushaltsmitgliedern)
-      const householdId = await getUserHouseholdId();
-      let query = supabase
-        .from("shopping_items")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // Server-API Route laden (Service Role, kein RLS-Problem)
+      const res = await fetch(`/api/shopping/load?userId=${user.id}`);
+      if (!res.ok) throw new Error("Failed to load shopping list");
+      const { items } = await res.json();
 
-      if (!householdId) {
-        // Kein Haushalt → nur eigene Items filtern
-        query = query.eq("user_id", user.id);
-      }
-      // Mit Haushalt: kein Filter nötig — RLS gibt alle sichtbaren Items zurück
-
-      const { data: items, error } = await query;
-
-      if (error) throw error;
-
-      const shoppingItems = (items || []).map(dbToShoppingItem);
+      const shoppingItems = ((items as any[]) || []).map(dbToShoppingItem);
 
       // batchCounts initialisieren: aus bestehenden Counts übernehmen, Default = 1
       const prevCounts = get().recipeBatchCounts;
