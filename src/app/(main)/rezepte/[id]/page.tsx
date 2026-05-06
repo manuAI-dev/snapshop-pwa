@@ -840,11 +840,11 @@ export default function RecipeDetailPage() {
                   type="text"
                   value={newListInput}
                   onChange={(e) => setNewListInput(e.target.value)}
-                  onKeyDown={(e) => {
+                  onKeyDown={async (e) => {
                     if (e.key === 'Enter' && newListInput.trim()) {
                       const name = newListInput.trim();
-                      const newList = createList(name);
-                      if (recipe.id) {
+                      const newList = await createList(name);
+                      if (newList && recipe.id) {
                         addRecipeToList(newList.id, recipe.id);
                       }
                       setNewListInput("");
@@ -863,11 +863,11 @@ export default function RecipeDetailPage() {
                   }}
                 />
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (newListInput.trim()) {
                       const name = newListInput.trim();
-                      const newList = createList(name);
-                      if (recipe.id) {
+                      const newList = await createList(name);
+                      if (newList && recipe.id) {
                         addRecipeToList(newList.id, recipe.id);
                       }
                       setNewListInput("");
