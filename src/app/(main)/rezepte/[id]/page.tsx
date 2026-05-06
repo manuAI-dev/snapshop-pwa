@@ -602,6 +602,8 @@ export default function RecipeDetailPage() {
           steps={recipe.instructions}
           currentStep={cookingStep}
           dishName={recipe.dishName}
+          ingredients={recipe.ingredients}
+          multiplier={multiplier}
           onStepChange={setCookingStep}
           onClose={() => setCookingMode(false)}
         />
@@ -1092,10 +1094,29 @@ function adjustQuantity(quantity: string, multiplier: number): string {
 /* ============================================================
    Kochmodus — Fullscreen Step-by-Step mit Swipe
    ============================================================ */
-function CookingModeOverlay({ steps, currentStep, dishName, onStepChange, onClose }: {
+function getIngredientsForStep(stepText: string, ingredients: Ingredient[]): Ingredient[] {
+  const lower = stepText.toLowerCase();
+  const matched = ingredients.filter((ing) => {
+    const name = ing.name.toLowerCase();
+    // Match full ingredient name
+    if (lower.includes(name)) return true;
+    // Try individual words of multi-word ingredients (3+ chars)
+    const words = name.split(/[\s,\-\/]+/).filter(w => w.length >= 3);
+    if (words.some(w => lower.includes(w))) return true;
+    // Also check if step mentions the ingredient's first word (often the key word)
+    const firstWord = name.split(/[\s,\-\/]+/)[0];
+    if (firstWord.length >= 4 && lower.includes(firstWord)) return true;
+    return false;
+  });
+  return matched;
+}
+
+function CookingModeOverlay({ steps, currentStep, dishName, ingredients, multiplier, onStepChange, onClose }: {
   steps: string[];
   currentStep: number;
   dishName: string;
+  ingredients: Ingredient[];
+  multiplier: number;
   onStepChange: (step: number) => void;
   onClose: () => void;
 }) {
@@ -1212,7 +1233,7 @@ function CookingModeOverlay({ steps, currentStep, dishName, onStepChange, onClos
         </div>
 
         {/* Step number */}
-        <div style={{ marginBottom: 20, position: 'relative', zIndex: 0 }}>
+        <div style={{ marginBottom: 12, position: 'relative', zIndex: 0 }}>
           <span style={{
             fontSize: 14, fontWeight: 700, color: '#F2894F',
             letterSpacing: 1, textTransform: 'uppercase',
@@ -1220,6 +1241,33 @@ function CookingModeOverlay({ steps, currentStep, dishName, onStepChange, onClos
             Schritt {currentStep + 1} von {total}
           </span>
         </div>
+
+        {/* Ingredients for this step */}
+        {(() => {
+          const stepIngredients = getIngredientsForStep(steps[currentStep], ingredients);
+          if (stepIngredients.length === 0) return null;
+          return (
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 6,
+              marginBottom: 20, position: 'relative', zIndex: 0,
+            }}>
+              {stepIngredients.map((ing, i) => (
+                <span key={i} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '5px 10px', borderRadius: 8,
+                  backgroundColor: 'rgba(242, 137, 79, 0.15)',
+                  fontSize: 12, fontWeight: 600, color: '#F2894F',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}>
+                  <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>
+                    {multiplier !== 1 ? adjustQuantity(ing.quantity, multiplier) : ing.quantity} {ing.unit}
+                  </span>
+                  {ing.name}
+                </span>
+              ))}
+            </div>
+          );
+        })()}
 
         {/* Step text — large and readable */}
         <p style={{
