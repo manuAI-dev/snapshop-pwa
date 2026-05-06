@@ -25,7 +25,7 @@ function getSourceFromUrl(url?: string): { id: string; name: string; color: stri
 
 export default function RezeptePage() {
   const { recipes, isLoading, loadRecipes, updateRecipe } = useRecipeStore();
-  const { lists, loadLists, createList, deleteList, renameList } = useRecipeListStore();
+  const { lists, loadLists, createList, deleteList, renameList, addRecipeToList, removeRecipeFromList } = useRecipeListStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -44,6 +44,11 @@ export default function RezeptePage() {
   const [editListName, setEditListName] = useState("");
   const [menuListId, setMenuListId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Add recipe to list picker
+  const [addToListId, setAddToListId] = useState<string | null>(null);
+  const [addToListSearch, setAddToListSearch] = useState("");
+  const [listToast, setListToast] = useState<string | null>(null);
 
   useEffect(() => {
     loadRecipes();
@@ -558,6 +563,23 @@ export default function RezeptePage() {
                               >
                                 <button
                                   onClick={() => {
+                                    setAddToListId(list.id);
+                                    setAddToListSearch("");
+                                    setMenuListId(null);
+                                  }}
+                                  style={{
+                                    width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                                    padding: '11px 14px', border: 'none', backgroundColor: 'white',
+                                    cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#212022',
+                                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                  }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9193A0" strokeWidth="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                                  Rezept hinzufügen
+                                </button>
+                                <div style={{ height: 1, backgroundColor: '#F5EDE6' }} />
+                                <button
+                                  onClick={() => {
                                     setEditingListId(list.id);
                                     setEditListName(list.name);
                                     setMenuListId(null);
@@ -775,6 +797,143 @@ export default function RezeptePage() {
           </div>
         );
       })()}
+
+      {/* ====== ADD RECIPE TO LIST — Bottom Sheet ====== */}
+      {addToListId && (() => {
+        const targetList = lists.find(l => l.id === addToListId);
+        if (!targetList) return null;
+        const searchLower = addToListSearch.toLowerCase();
+        const availableRecipes = recipes.filter(r =>
+          (!searchLower || r.dishName.toLowerCase().includes(searchLower))
+        );
+        return (
+          <>
+            <div
+              onClick={() => setAddToListId(null)}
+              style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.35)', zIndex: 100 }}
+            />
+            <div style={{
+              position: 'fixed', bottom: 0, left: 0, right: 0,
+              backgroundColor: 'white', borderRadius: '20px 20px 0 0',
+              padding: '20px 20px 32px', zIndex: 101,
+              boxShadow: '0 -4px 20px rgba(0,0,0,0.1)',
+              maxHeight: '75vh', display: 'flex', flexDirection: 'column',
+            }}>
+              {/* Handle */}
+              <div style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', margin: '0 auto 14px' }} />
+
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: '#212022', margin: 0, fontFamily: "'Montserrat', sans-serif" }}>
+                  Rezept zu „{targetList.name}" hinzufügen
+                </h3>
+                <button
+                  onClick={() => setAddToListId(null)}
+                  style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', backgroundColor: '#FCF7F2', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9193A0" strokeWidth="2"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                </button>
+              </div>
+
+              {/* Search */}
+              <input
+                type="text"
+                value={addToListSearch}
+                onChange={(e) => setAddToListSearch(e.target.value)}
+                placeholder="Rezept suchen..."
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 12,
+                  border: '1.5px solid #E8E0D8', fontSize: 14, outline: 'none',
+                  fontFamily: "'Plus Jakarta Sans', sans-serif", marginBottom: 12,
+                  backgroundColor: '#FEFBF8',
+                }}
+              />
+
+              {/* Scrollable recipe list */}
+              <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {availableRecipes.length === 0 ? (
+                  <p style={{ fontSize: 14, color: '#9193A0', textAlign: 'center', padding: 20 }}>Keine Rezepte gefunden.</p>
+                ) : (
+                  availableRecipes.map((r) => {
+                    const isInList = r.id ? targetList.recipeIds.includes(r.id) : false;
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => {
+                          if (!r.id) return;
+                          if (isInList) {
+                            removeRecipeFromList(targetList.id, r.id);
+                            setListToast(`Aus „${targetList.name}" entfernt`);
+                          } else {
+                            addRecipeToList(targetList.id, r.id);
+                            setListToast(`Zu „${targetList.name}" hinzugefügt ✓`);
+                          }
+                          setTimeout(() => setListToast(null), 2000);
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          padding: '8px 10px', borderRadius: 12,
+                          border: isInList ? `2px solid ${targetList.color}40` : '2px solid transparent',
+                          backgroundColor: isInList ? `${targetList.color}08` : 'white',
+                          cursor: 'pointer', textAlign: 'left', width: '100%',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {/* Thumbnail */}
+                        <div style={{
+                          width: 44, height: 44, borderRadius: 10, overflow: 'hidden',
+                          backgroundColor: '#F5EDE6', flexShrink: 0,
+                        }}>
+                          {(r.thumbnail || r.recipeImages?.[0]) ? (
+                            <img src={r.thumbnail || r.recipeImages![0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C4B5A5" strokeWidth="1.5"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" /><circle cx="12" cy="13" r="3" /></svg>
+                            </div>
+                          )}
+                        </div>
+                        {/* Name */}
+                        <p style={{
+                          flex: 1, fontSize: 14, fontWeight: 500, color: '#212022', margin: 0,
+                          fontFamily: "'Plus Jakarta Sans', sans-serif",
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {r.dishName}
+                        </p>
+                        {/* Checkbox */}
+                        <div style={{
+                          width: 22, height: 22, borderRadius: 7,
+                          border: `2px solid ${targetList.color}`,
+                          backgroundColor: isInList ? targetList.color : 'white',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        }}>
+                          {isInList && (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* List Toast */}
+      {listToast && (
+        <div style={{
+          position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
+          backgroundColor: '#212022', color: 'white', padding: '10px 20px',
+          borderRadius: 12, fontSize: 14, fontWeight: 500, zIndex: 200,
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          animation: 'fadeIn 0.2s ease',
+        }}>
+          {listToast}
+        </div>
+      )}
     </div>
   );
 }

@@ -886,7 +886,7 @@ export default function RecipeDetailPage() {
                     fontFamily: "'Plus Jakarta Sans', sans-serif",
                   }}
                 >
-                  Hinzufügen
+                  Erstellen
                 </button>
               </div>
             </div>
