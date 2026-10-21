@@ -1,963 +1,547 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SnapShop — Dein AI-Kochassistent</title>
-  <meta name="description" content="Kochbuch fotografieren — Zutaten landen direkt in der Einkaufsliste. Nie mehr abschreiben. Rezepte scannen, Kühlschrank checken, smart einkaufen — alles mit AI." />
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
-  <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnapShop — Dein intelligenter Koch-Assistent</title>
+<meta name="description" content="Rezepte scannen, Wochenpläne erstellen, Einkaufslisten generieren. 3 Monate gratis testen.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="/icons/icon-192x192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { overflow-x: hidden; scroll-behavior: smooth; }
+body { overflow-x: hidden; background: #000; color: #fff; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+.font-instrument { font-family: 'Instrument Serif', serif; }
 
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://wesnapshop.ch/" />
-  <meta property="og:title" content="SnapShop — Dein AI-Kochassistent" />
-  <meta property="og:description" content="Kochbuch fotografieren — Zutaten landen direkt in der Einkaufsliste. 3 Monate gratis testen." />
-  <meta property="og:image" content="https://wesnapshop.ch/og-image.jpg" />
-  <meta property="og:locale" content="de_CH" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="SnapShop — Dein AI-Kochassistent" />
-  <meta name="twitter:description" content="Kochbuch fotografieren — Zutaten landen direkt in der Einkaufsliste. 3 Monate gratis." />
-  <meta name="twitter:image" content="https://wesnapshop.ch/og-image.jpg" />
+/* ===== NAVBAR ===== */
+.navbar {
+  position: fixed; top: 0; left: 0; width: 100%; z-index: 50;
+  transition: background 500ms cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 500ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.navbar.scrolled { background: rgba(0,0,0,0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.navbar-inner {
+  max-width: 1440px; margin: 0 auto; padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 64px;
+}
+@media (min-width: 768px) { .navbar-inner { height: 80px; padding: 0 40px; } }
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+/* Logo */
+.nav-logo {
+  color: #fff; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.025em;
+  text-decoration: none; z-index: 50; opacity: 0; transform: translateY(-16px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nav-logo .accent { color: #F2894F; }
+@media (min-width: 768px) { .nav-logo { font-size: 1.5rem; } }
+.nav-logo.mounted { opacity: 1; transform: translateY(0); }
 
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+/* Desktop pill */
+.nav-pill {
+  display: none; padding: 8px 20px; border-radius: 9999px;
+  border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.9);
+  font-size: 0.875rem; background: transparent; cursor: pointer;
+  align-items: center; gap: 8px; z-index: 50;
+  opacity: 0; transform: translateY(-16px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1), background 300ms;
+}
+.nav-pill:hover { background: rgba(255,255,255,0.1); }
+@media (min-width: 768px) { .nav-pill { display: flex; } }
+.nav-pill.mounted { opacity: 1; transform: translateY(0); }
 
-    :root {
-      --accent: #F2894F;
-      --accent-light: #FFF0E6;
-      --dark: #1A1A2E;
-      --dark-2: #16213E;
-      --glass: rgba(255,255,255,0.06);
-      --glass-border: rgba(255,255,255,0.08);
-      --text-muted: rgba(255,255,255,0.55);
-      --text-light: rgba(255,255,255,0.85);
-      --radius: 20px;
-      --radius-sm: 14px;
-    }
+/* Desktop icon */
+.nav-icon {
+  display: none; z-index: 50; opacity: 0; transform: translateY(-16px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (min-width: 768px) { .nav-icon { display: block; } }
+.nav-icon.mounted { opacity: 1; transform: translateY(0); }
+.nav-icon svg { width: 28px; height: 28px; color: rgba(255,255,255,0.9); }
 
-    html { scroll-behavior: smooth; }
-    body {
-      font-family: 'Inter', -apple-system, sans-serif;
-      background: var(--dark);
-      color: #fff;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
+/* Hamburger */
+.hamburger {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; width: 32px; height: 32px; background: none; border: none;
+  cursor: pointer; z-index: 50; opacity: 0; transform: translateY(-16px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (min-width: 768px) { .hamburger { display: none; } }
+.hamburger.mounted { opacity: 1; transform: translateY(0); }
+.hamburger .bar {
+  width: 24px; height: 2px; background: #fff; display: block;
+  transition: transform 500ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.hamburger.open .bar:first-child { transform: rotate(45deg) translateY(4px); }
+.hamburger.open .bar:last-child { transform: rotate(-45deg) translateY(-4px); }
 
-    /* ── NAV ── */
-    nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 16px 32px;
-      background: rgba(26,26,46,0.7);
-      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-      border-bottom: 1px solid var(--glass-border);
-      transition: background 0.3s;
-    }
-    .nav-logo {
-      display: flex; align-items: center; gap: 10px;
-      text-decoration: none; color: #fff;
-      font-weight: 800; font-size: 20px;
-    }
-    .nav-logo svg { height: 28px; width: auto; }
-    .nav-links { display: flex; align-items: center; gap: 32px; }
-    .nav-links a {
-      text-decoration: none; color: var(--text-muted);
-      font-weight: 500; font-size: 14px; transition: color 0.2s;
-    }
-    .nav-links a:hover { color: #fff; }
-    .nav-cta {
-      background: var(--accent); color: #fff; border: none; border-radius: 100px;
-      padding: 10px 24px; font-weight: 600; font-size: 14px; cursor: pointer;
-      text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(242,137,79,0.4); }
+/* ===== OVERLAY MENU ===== */
+.overlay {
+  position: fixed; inset: 0; z-index: 40; background: #000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden;
+  transition: opacity 700ms cubic-bezier(0.76, 0, 0.24, 1), visibility 700ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.overlay.open { opacity: 1; visibility: visible; }
+.overlay-links { display: flex; flex-direction: column; align-items: center; gap: 32px; }
+.overlay-link {
+  color: #fff; text-decoration: none; font-size: 2.25rem;
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 600ms cubic-bezier(0.76, 0, 0.24, 1), transform 600ms cubic-bezier(0.76, 0, 0.24, 1);
+}
+.overlay-link:hover { opacity: 0.6 !important; }
+@media (min-width: 768px) { .overlay-link { font-size: 3.75rem; } }
 
-    /* ── HERO ── */
-    .hero {
-      min-height: 100vh;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      text-align: center;
-      padding: 140px 24px 80px;
-      position: relative; overflow: hidden;
-    }
-    .hero::before {
-      content: ''; position: absolute; top: -40%; left: 50%; transform: translateX(-50%);
-      width: 800px; height: 800px;
-      background: radial-gradient(circle, rgba(242,137,79,0.15) 0%, transparent 70%);
-      pointer-events: none;
-    }
+/* ===== HERO ===== */
+.hero {
+  position: relative; width: 100%; height: 100vh; overflow: hidden;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.hero-video-wrap {
+  position: absolute; inset: 0;
+  transform: scale(1.05); opacity: 0;
+  transition: transform 1400ms cubic-bezier(0.16, 1, 0.3, 1), opacity 1400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-video-wrap.mounted { transform: scale(1); opacity: 1; }
+.hero-video-wrap video { width: 100%; height: 100%; object-fit: cover; }
+.hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.15) 30%, rgba(0,0,0,0.3) 60%, rgba(0,0,0,0.85) 100%);
+  z-index: 1;
+}
 
-    /* ── KITCHEN COUNTER BACKGROUND ── */
-    .kitchen-counter {
-      position: absolute; inset: 0; z-index: 0;
-      overflow: hidden; pointer-events: none;
-    }
-    .hero > *:not(.kitchen-counter) { position: relative; z-index: 1; }
+.hero-content {
+  position: relative; z-index: 10; text-align: center;
+  padding: 0 24px 64px; max-width: 56rem; margin: 0 auto;
+}
+@media (min-width: 768px) { .hero-content { padding-bottom: 96px; } }
 
-    .ingredient {
-      position: absolute;
-      font-size: 48px;
-      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-      filter: drop-shadow(0 8px 16px rgba(0,0,0,0.35));
-      will-change: transform;
-      user-select: none;
-      opacity: 0.7;
-    }
-    .ingredient.size-lg { font-size: 64px; }
-    .ingredient.size-sm { font-size: 36px; }
-    .ingredient.size-xs { font-size: 28px; }
+.hero-h1 {
+  color: #fff; font-size: 2.5rem; line-height: 0.95;
+  margin-bottom: 20px;
+  opacity: 0; transform: translateY(32px);
+  transition: opacity 900ms cubic-bezier(0.16, 1, 0.3, 1), transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-h1.mounted { opacity: 1; transform: translateY(0); }
+@media (min-width: 640px) { .hero-h1 { font-size: 3rem; } }
+@media (min-width: 768px) { .hero-h1 { font-size: 3.75rem; margin-bottom: 24px; } }
+@media (min-width: 1024px) { .hero-h1 { font-size: 4.5rem; } }
 
-    /* Subtle floating idle animation */
-    @keyframes floatA { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
-    @keyframes floatB { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-12px) rotate(-4deg); } }
-    @keyframes floatC { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-6px) rotate(5deg); } }
+.hero-sub {
+  color: rgba(255,255,255,0.7); font-size: 1rem; margin-bottom: 32px;
+  max-width: 28rem; margin-left: auto; margin-right: auto;
+  opacity: 0; transform: translateY(32px);
+  transition: opacity 900ms cubic-bezier(0.16, 1, 0.3, 1), transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-sub.mounted { opacity: 1; transform: translateY(0); }
+@media (min-width: 768px) { .hero-sub { font-size: 1.125rem; margin-bottom: 40px; } }
 
-    .ingredient:nth-child(odd)  { animation: floatA 4s ease-in-out infinite; }
-    .ingredient:nth-child(even) { animation: floatB 5s ease-in-out infinite; }
-    .ingredient:nth-child(3n)   { animation: floatC 6s ease-in-out infinite; }
+.hero-cta {
+  display: inline-block; padding: 14px 32px;
+  background: #fff; color: #000; font-size: 0.875rem; font-weight: 500;
+  border-radius: 9999px; text-decoration: none;
+  opacity: 0; transform: translateY(32px);
+  transition: opacity 900ms cubic-bezier(0.16, 1, 0.3, 1), transform 900ms cubic-bezier(0.16, 1, 0.3, 1), background 300ms;
+}
+.hero-cta:hover { background: rgba(255,255,255,0.9); }
+.hero-cta.mounted { opacity: 1; transform: translateY(0); }
+@media (min-width: 768px) { .hero-cta { font-size: 1rem; } }
 
-    /* Wooden surface gradient at the bottom */
-    .kitchen-surface {
-      position: absolute; bottom: 0; left: 0; right: 0;
-      height: 35%;
-      background: linear-gradient(180deg,
-        transparent 0%,
-        rgba(101, 67, 33, 0.08) 30%,
-        rgba(101, 67, 33, 0.15) 60%,
-        rgba(101, 67, 33, 0.22) 100%
-      );
-      pointer-events: none;
-    }
-    .kitchen-surface::before {
-      content: ''; position: absolute; inset: 0;
-      background: repeating-linear-gradient(
-        90deg,
-        transparent,
-        transparent 80px,
-        rgba(255,255,255,0.02) 80px,
-        rgba(255,255,255,0.02) 82px
-      );
-    }
+/* ===== SECTIONS ===== */
+.section { padding: 96px 24px; max-width: 1200px; margin: 0 auto; }
+@media (min-width: 768px) { .section { padding: 128px 40px; } }
 
-    @media (max-width: 768px) {
-      .ingredient { opacity: 0.5; }
-      .ingredient.size-lg { font-size: 44px; }
-      .ingredient { font-size: 36px; }
-      .ingredient.size-sm { font-size: 28px; }
-      .ingredient.size-xs { font-size: 22px; }
-    }
-    .hero-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--glass); border: 1px solid var(--glass-border);
-      border-radius: 100px; padding: 8px 20px;
-      font-size: 13px; font-weight: 500; color: var(--text-light);
-      margin-bottom: 32px;
-      animation: fadeUp 0.8s ease both;
-    }
-    .hero-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ADE80; }
-    .hero h1 {
-      font-size: clamp(40px, 6vw, 72px); font-weight: 900;
-      line-height: 1.05; letter-spacing: -0.03em;
-      max-width: 800px; margin-bottom: 24px;
-      animation: fadeUp 0.8s 0.1s ease both;
-    }
-    .hero h1 .gradient {
-      background: linear-gradient(135deg, var(--accent), #FF6B6B);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .hero-sub {
-      font-size: 18px; line-height: 1.7; color: var(--text-muted);
-      max-width: 540px; margin-bottom: 40px;
-      animation: fadeUp 0.8s 0.2s ease both;
-    }
-    .hero-actions {
-      display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
-      justify-content: center;
-      animation: fadeUp 0.8s 0.3s ease both;
-    }
-    .btn-primary {
-      background: var(--accent); color: #fff;
-      padding: 16px 36px; border-radius: 100px; border: none;
-      font-weight: 700; font-size: 16px; cursor: pointer;
-      text-decoration: none; transition: all 0.3s;
-      display: inline-flex; align-items: center; gap: 8px;
-    }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(242,137,79,0.35); }
-    .btn-ghost {
-      color: var(--text-light);
-      padding: 16px 28px; border-radius: 100px;
-      border: 1px solid rgba(255,255,255,0.15);
-      font-weight: 600; font-size: 16px; cursor: pointer;
-      text-decoration: none; background: transparent;
-      transition: all 0.3s;
-    }
-    .btn-ghost:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.25); }
-    .hero-free {
-      margin-top: 16px; font-size: 14px; color: var(--text-muted);
-      animation: fadeUp 0.8s 0.4s ease both;
-    }
-    .hero-free strong { color: var(--accent); }
+.section-label {
+  display: inline-block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.15em; color: #F2894F; margin-bottom: 16px;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.section-label.visible { opacity: 1; transform: translateY(0); }
 
-    /* Phone mockups in hero */
-    .hero-phones {
-      display: flex; gap: 24px; align-items: flex-end;
-      margin-top: 64px; position: relative;
-      animation: fadeUp 1s 0.5s ease both;
-    }
-    .phone {
-      width: 240px; border-radius: 32px; overflow: hidden;
-      box-shadow: 0 40px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08);
-      transition: transform 0.4s ease;
-    }
-    .phone:hover { transform: translateY(-8px); }
-    .phone.center { width: 270px; z-index: 2; }
-    .phone.side { opacity: 0.7; transform: scale(0.92); }
-    .phone.side:hover { opacity: 0.9; transform: scale(0.92) translateY(-8px); }
-    .phone img { width: 100%; display: block; }
+.section-title {
+  font-size: 2rem; font-weight: 600; line-height: 1.1; margin-bottom: 20px;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1) 100ms, transform 700ms cubic-bezier(0.16, 1, 0.3, 1) 100ms;
+}
+@media (min-width: 768px) { .section-title { font-size: 2.75rem; } }
+.section-title.visible { opacity: 1; transform: translateY(0); }
 
-    /* ── LOGOS / SOCIAL PROOF ── */
-    .social-proof {
-      padding: 48px 24px;
-      text-align: center;
-      border-top: 1px solid var(--glass-border);
-      border-bottom: 1px solid var(--glass-border);
-    }
-    .social-proof p {
-      font-size: 13px; color: var(--text-muted); text-transform: uppercase;
-      letter-spacing: 2px; font-weight: 600; margin-bottom: 24px;
-    }
-    .proof-logos {
-      display: flex; align-items: center; justify-content: center;
-      gap: 48px; flex-wrap: wrap; opacity: 0.4;
-      font-size: 18px; font-weight: 700; color: #fff;
-    }
+.section-desc {
+  color: rgba(255,255,255,0.6); font-size: 1.05rem; line-height: 1.7; max-width: 600px;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1) 200ms, transform 700ms cubic-bezier(0.16, 1, 0.3, 1) 200ms;
+}
+.section-desc.visible { opacity: 1; transform: translateY(0); }
 
-    /* ── FEATURES GRID ── */
-    .features {
-      padding: 120px 24px;
-      max-width: 1100px; margin: 0 auto;
-    }
-    .features-header {
-      text-align: center; margin-bottom: 80px;
-    }
-    .tag {
-      display: inline-block; font-size: 12px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 2px;
-      color: var(--accent); margin-bottom: 16px;
-    }
-    .features-header h2 {
-      font-size: clamp(32px, 4vw, 48px); font-weight: 800;
-      line-height: 1.1; margin-bottom: 16px;
-    }
-    .features-header p { font-size: 17px; color: var(--text-muted); max-width: 500px; margin: 0 auto; }
+/* How it works */
+.steps-grid {
+  display: grid; gap: 32px; margin-top: 64px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 768px) { .steps-grid { grid-template-columns: repeat(3, 1fr); gap: 48px; } }
 
-    .features-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-    }
-    .feature-card {
-      background: var(--glass); border: 1px solid var(--glass-border);
-      border-radius: var(--radius); padding: 0; overflow: hidden;
-      transition: transform 0.3s, border-color 0.3s;
-    }
-    .feature-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.15); }
-    .feature-card.large { grid-column: span 2; }
-    .feature-thumb {
-      width: 100%; aspect-ratio: 16/10; overflow: hidden;
-    }
-    .feature-thumb img {
-      width: 100%; height: 100%; object-fit: cover;
-      transition: transform 0.4s;
-    }
-    .feature-card:hover .feature-thumb img { transform: scale(1.04); }
-    .feature-body { padding: 24px; }
-    .feature-icon {
-      width: 44px; height: 44px; border-radius: 12px;
-      background: rgba(242,137,79,0.12);
-      display: grid; place-items: center;
-      font-size: 22px; margin-bottom: 16px;
-    }
-    .feature-body h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-    .feature-body p { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+.step-card {
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.step-card.visible { opacity: 1; transform: translateY(0); }
 
-    /* ── HOW IT WORKS ── */
-    .how-section {
-      padding: 120px 24px;
-      background: linear-gradient(180deg, var(--dark) 0%, var(--dark-2) 100%);
-    }
-    .how-inner { max-width: 1100px; margin: 0 auto; }
-    .how-header { text-align: center; margin-bottom: 80px; }
-    .how-header h2 { font-size: clamp(32px, 4vw, 48px); font-weight: 800; margin-bottom: 16px; }
-    .how-header p { font-size: 17px; color: var(--text-muted); max-width: 500px; margin: 0 auto; }
+.step-number {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(242, 137, 79, 0.15); color: #F2894F;
+  font-size: 1.25rem; font-weight: 700; margin-bottom: 20px;
+}
+.step-card h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 12px; }
+.step-card p { color: rgba(255,255,255,0.6); line-height: 1.65; font-size: 0.95rem; }
 
-    .steps {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 32px; position: relative;
-    }
-    .steps::before {
-      content: ''; position: absolute; top: 44px; left: 15%; right: 15%;
-      height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent);
-      opacity: 0.3;
-    }
-    .step {
-      text-align: center; position: relative; z-index: 1;
-    }
-    .step-num {
-      width: 88px; height: 88px; border-radius: 50%;
-      background: var(--glass); border: 2px solid var(--accent);
-      display: grid; place-items: center;
-      font-size: 32px; font-weight: 900; color: var(--accent);
-      margin: 0 auto 24px;
-    }
-    .step h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-    .step p { font-size: 14px; color: var(--text-muted); line-height: 1.6; max-width: 280px; margin: 0 auto; }
+/* Features */
+.features-section { background: rgba(255,255,255,0.03); border-top: 1px solid rgba(255,255,255,0.06); border-bottom: 1px solid rgba(255,255,255,0.06); }
+.features-grid {
+  display: grid; gap: 24px; margin-top: 64px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .features-grid { grid-template-columns: repeat(3, 1fr); } }
 
-    /* ── APP SCREENS CAROUSEL ── */
-    .screens-section {
-      padding: 120px 24px 80px;
-      text-align: center;
-    }
-    .screens-header { margin-bottom: 64px; }
-    .screens-header h2 { font-size: clamp(32px, 4vw, 48px); font-weight: 800; margin-bottom: 16px; }
-    .screens-header p { font-size: 17px; color: var(--text-muted); max-width: 500px; margin: 0 auto; }
+.feature-card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px; padding: 32px; overflow: hidden;
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1), border-color 300ms;
+}
+.feature-card:hover { border-color: rgba(242, 137, 79, 0.3); }
+.feature-card.visible { opacity: 1; transform: translateY(0); }
 
-    .screens-track {
-      display: flex; gap: 24px;
-      overflow-x: auto; scroll-snap-type: x mandatory;
-      padding: 24px 48px 40px;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-    }
-    .screens-track::-webkit-scrollbar { display: none; }
-    .screen-card {
-      flex-shrink: 0; width: 220px;
-      scroll-snap-align: center;
-      text-align: center;
-    }
-    .screen-phone {
-      width: 220px; border-radius: 28px; overflow: hidden;
-      background: #000;
-      box-shadow: 0 24px 48px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.06);
-      margin-bottom: 16px;
-      transition: transform 0.3s;
-    }
-    .screen-card:hover .screen-phone { transform: translateY(-6px); }
-    .screen-phone img { width: 100%; display: block; }
-    .screen-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-    .screen-card p { font-size: 13px; color: var(--text-muted); }
+.feature-icon {
+  width: 44px; height: 44px; border-radius: 12px; margin-bottom: 20px;
+  background: rgba(242, 137, 79, 0.12); display: flex; align-items: center; justify-content: center;
+  font-size: 1.25rem;
+}
+.feature-card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+.feature-card p { color: rgba(255,255,255,0.55); font-size: 0.9rem; line-height: 1.6; }
 
-    /* ── PRICING ── */
-    .pricing-section {
-      padding: 120px 24px;
-      max-width: 960px; margin: 0 auto;
-    }
-    .pricing-header {
-      text-align: center; margin-bottom: 64px;
-    }
-    .pricing-header h2 { font-size: clamp(32px, 4vw, 48px); font-weight: 800; margin-bottom: 16px; }
-    .pricing-header p { font-size: 17px; color: var(--text-muted); max-width: 560px; margin: 0 auto; }
+/* Screenshots */
+.screenshots-row {
+  display: flex; gap: 16px; margin-top: 64px; overflow-x: auto;
+  padding-bottom: 16px; scroll-snap-type: x mandatory;
+  -ms-overflow-style: none; scrollbar-width: none;
+}
+.screenshots-row::-webkit-scrollbar { display: none; }
+.screenshot-item {
+  flex: 0 0 220px; border-radius: 20px; overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08); scroll-snap-align: start;
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.screenshot-item.visible { opacity: 1; transform: translateY(0); }
+@media (min-width: 768px) { .screenshot-item { flex: 0 0 260px; } }
+.screenshot-item img { width: 100%; height: auto; display: block; }
 
-    .pricing-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-    .price-card {
-      background: var(--glass); border: 1px solid var(--glass-border);
-      border-radius: var(--radius); padding: 40px 32px;
-      position: relative; transition: transform 0.3s;
-    }
-    .price-card:hover { transform: translateY(-4px); }
-    .price-card.featured {
-      border-color: var(--accent);
-      background: linear-gradient(160deg, rgba(242,137,79,0.08), var(--glass));
-    }
-    .price-badge {
-      position: absolute; top: -12px; right: 24px;
-      background: var(--accent); color: #fff;
-      padding: 6px 16px; border-radius: 100px;
-      font-size: 12px; font-weight: 700;
-    }
-    .price-card h3 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-    .price-amount {
-      font-size: 48px; font-weight: 900; margin-bottom: 4px;
-    }
-    .price-amount span { font-size: 18px; font-weight: 500; color: var(--text-muted); }
-    .price-period { font-size: 14px; color: var(--text-muted); margin-bottom: 32px; }
-    .price-features {
-      list-style: none; margin-bottom: 32px;
-    }
-    .price-features li {
-      padding: 10px 0; font-size: 15px; color: var(--text-light);
-      border-bottom: 1px solid var(--glass-border);
-      display: flex; align-items: center; gap: 10px;
-    }
-    .price-features li::before {
-      content: '✓'; color: var(--accent); font-weight: 700;
-    }
-    .price-btn {
-      display: block; text-align: center;
-      padding: 14px 28px; border-radius: 100px;
-      font-weight: 700; font-size: 15px;
-      text-decoration: none; transition: all 0.3s;
-    }
-    .price-btn.outline {
-      color: #fff; border: 1px solid rgba(255,255,255,0.2);
-      background: transparent;
-    }
-    .price-btn.outline:hover { background: rgba(255,255,255,0.05); }
-    .price-btn.filled {
-      background: var(--accent); color: #fff; border: none;
-    }
-    .price-btn.filled:hover { box-shadow: 0 8px 24px rgba(242,137,79,0.3); transform: translateY(-1px); }
+/* Pricing */
+.pricing-card {
+  max-width: 480px; margin: 64px auto 0;
+  background: linear-gradient(135deg, rgba(242,137,79,0.08) 0%, rgba(255,255,255,0.04) 100%);
+  border: 1px solid rgba(242,137,79,0.2); border-radius: 24px; padding: 48px 32px;
+  text-align: center;
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pricing-card.visible { opacity: 1; transform: translateY(0); }
+.pricing-badge {
+  display: inline-block; background: #F2894F; color: #000; font-size: 0.75rem;
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+  padding: 6px 16px; border-radius: 9999px; margin-bottom: 24px;
+}
+.pricing-price { font-size: 3.5rem; font-weight: 700; line-height: 1; margin-bottom: 8px; }
+.pricing-price span { font-size: 1.25rem; font-weight: 400; color: rgba(255,255,255,0.6); }
+.pricing-note { color: rgba(255,255,255,0.5); font-size: 0.9rem; margin-bottom: 32px; }
+.pricing-features { text-align: left; margin-bottom: 32px; }
+.pricing-features li {
+  list-style: none; padding: 8px 0; color: rgba(255,255,255,0.7);
+  font-size: 0.95rem; display: flex; align-items: center; gap: 12px;
+}
+.pricing-features li::before {
+  content: '\2713'; color: #F2894F; font-weight: 700; font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.pricing-cta {
+  display: inline-block; padding: 14px 40px; background: #F2894F; color: #000;
+  font-weight: 600; border-radius: 9999px; text-decoration: none; font-size: 1rem;
+  transition: background 300ms, transform 200ms;
+}
+.pricing-cta:hover { background: #e07a42; transform: translateY(-1px); }
 
-    .pricing-note {
-      text-align: center; margin-top: 32px;
-      font-size: 14px; color: var(--text-muted);
-      max-width: 560px; margin-left: auto; margin-right: auto;
-      line-height: 1.7;
-    }
+/* Install */
+.install-section { text-align: center; }
+.install-cta {
+  display: inline-block; padding: 16px 48px; margin-top: 32px;
+  background: #fff; color: #000; font-size: 1rem; font-weight: 600;
+  border-radius: 9999px; text-decoration: none;
+  opacity: 0; transform: translateY(20px);
+  transition: opacity 700ms cubic-bezier(0.16, 1, 0.3, 1), transform 700ms cubic-bezier(0.16, 1, 0.3, 1), background 300ms;
+}
+.install-cta:hover { background: rgba(255,255,255,0.9); transform: translateY(-1px); }
+.install-cta.visible { opacity: 1; transform: translateY(0); }
 
-    /* ── INSTALL PWA ── */
-    .install-section {
-      padding: 100px 24px;
-      background: var(--dark-2);
-      border-top: 1px solid var(--glass-border);
-    }
-    .install-inner {
-      max-width: 800px; margin: 0 auto; text-align: center;
-    }
-    .install-inner h2 { font-size: clamp(28px, 3.5vw, 40px); font-weight: 800; margin-bottom: 16px; }
-    .install-inner > p { font-size: 16px; color: var(--text-muted); margin-bottom: 48px; max-width: 520px; margin-left: auto; margin-right: auto; }
+/* Footer */
+.footer {
+  padding: 48px 24px; text-align: center;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.35); font-size: 0.85rem;
+}
+.footer a { color: rgba(255,255,255,0.5); text-decoration: none; }
+.footer a:hover { color: #fff; }
 
-    .install-steps {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 24px; margin-bottom: 40px;
-    }
-    .install-card {
-      background: var(--glass); border: 1px solid var(--glass-border);
-      border-radius: var(--radius-sm); padding: 28px 20px;
-      text-align: center;
-    }
-    .install-num {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: var(--accent); color: #fff;
-      font-weight: 800; font-size: 18px;
-      display: grid; place-items: center;
-      margin: 0 auto 16px;
-    }
-    .install-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
-    .install-card p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
-    .install-note {
-      font-size: 13px; color: var(--text-muted);
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-    }
-
-    /* ── FINAL CTA ── */
-    .final-cta {
-      padding: 120px 24px;
-      text-align: center;
-      position: relative; overflow: hidden;
-    }
-    .final-cta::before {
-      content: ''; position: absolute; bottom: -20%; left: 50%; transform: translateX(-50%);
-      width: 600px; height: 600px;
-      background: radial-gradient(circle, rgba(242,137,79,0.12) 0%, transparent 70%);
-      pointer-events: none;
-    }
-    .final-cta h2 {
-      font-size: clamp(36px, 5vw, 56px); font-weight: 900;
-      line-height: 1.1; margin-bottom: 20px;
-      position: relative;
-    }
-    .final-cta p {
-      font-size: 18px; color: var(--text-muted);
-      max-width: 480px; margin: 0 auto 40px; position: relative;
-    }
-    .final-cta .btn-primary { position: relative; }
-
-    /* ── FOOTER ── */
-    footer {
-      padding: 40px 24px;
-      border-top: 1px solid var(--glass-border);
-      text-align: center;
-    }
-    .footer-links {
-      display: flex; justify-content: center; gap: 32px; margin-bottom: 16px;
-    }
-    .footer-links a {
-      text-decoration: none; color: var(--text-muted);
-      font-size: 13px; transition: color 0.2s;
-    }
-    .footer-links a:hover { color: #fff; }
-    footer p { font-size: 12px; color: rgba(255,255,255,0.3); }
-
-    /* ── ANIMATIONS ── */
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .reveal {
-      opacity: 0; transform: translateY(24px);
-      transition: opacity 0.7s ease, transform 0.7s ease;
-    }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
-
-    /* ── MOBILE ── */
-    @media (max-width: 768px) {
-      nav { padding: 14px 20px; }
-      .nav-links { display: none; }
-      .hero { padding: 120px 20px 60px; }
-      .hero-phones { gap: 12px; }
-      .phone { width: 140px; border-radius: 20px; }
-      .phone.center { width: 170px; }
-      .features-grid { grid-template-columns: 1fr; }
-      .feature-card.large { grid-column: span 1; }
-      .steps { grid-template-columns: 1fr; gap: 48px; }
-      .steps::before { display: none; }
-      .pricing-grid { grid-template-columns: 1fr; }
-      .install-steps { grid-template-columns: 1fr; }
-      .hero-actions { flex-direction: column; }
-    }
-
-    /* Food marquee */
-    .marquee-section {
-      padding: 60px 0; overflow: hidden;
-      border-top: 1px solid var(--glass-border);
-      border-bottom: 1px solid var(--glass-border);
-    }
-    .marquee-track {
-      display: flex; gap: 16px;
-      animation: marquee 30s linear infinite;
-      width: max-content;
-    }
-    .marquee-track img {
-      width: 280px; height: 180px; object-fit: cover;
-      border-radius: var(--radius-sm); opacity: 0.7;
-      transition: opacity 0.3s;
-    }
-    .marquee-track img:hover { opacity: 1; }
-    @keyframes marquee {
-      from { transform: translateX(0); }
-      to { transform: translateX(-50%); }
-    }
-  </style>
+.hidden-mobile { display: none; }
+@media (min-width: 640px) { .hidden-mobile { display: inline; } }
+</style>
 </head>
 <body>
 
-<!-- NAV -->
-<nav id="navbar">
-  <a href="/" class="nav-logo">
-    <svg viewBox="0 0 81 109" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path fill-rule="evenodd" clip-rule="evenodd" d="M24.1 6.7c1.1-4.7 5.9-7.6 10.6-6.5l35.4 8.4c4.7 1.1 7.6 5.8 6.5 10.5l-2.5 10.4c-1.1 4.7-5.8 7.6-10.5 6.5L30.3 28.1c-1.7-.4-3.4.9-3.4 2.7 0 1 .6 1.9 1.4 2.4l45.7 24.7c4.3 2.3 7 6.8 7 11.7v6.3c0 4.8-3.9 8.7-8.8 8.7h-8.5c-4.1 0-7.7 2.9-8.6 6.9l-2.2 10.4c-1 4.7-5.7 7.7-10.4 6.7L6.9 101.3c-4.7-1-7.7-5.6-6.7-10.4l2.2-10.3c1-4.7 5.7-7.7 10.4-6.7l38.1 8.1c1.7.4 3.4-.9 3.4-2.7 0-1-.6-2-1.5-2.4L7.1 52.1C2.8 49.8.1 45.3.1 40.4v-7c0-4.8 3.9-8.7 8.8-8.7h4c4.1 0 7.6-2.8 8.5-6.7l2.7-11.3z" fill="url(#navlogo)"/>
-      <defs><linearGradient id="navlogo" x1="40.5" y1="2" x2="40.5" y2="108" gradientUnits="userSpaceOnUse"><stop stop-color="#FFD5D5"/><stop offset="1" stop-color="#F2894F"/></linearGradient></defs>
-    </svg>
-    Snapshop
-  </a>
-  <div class="nav-links">
-    <a href="#features">Features</a>
-    <a href="#screens">App</a>
-    <a href="#pricing">Preise</a>
-    <a href="#install">Installation</a>
+<!-- NAVBAR -->
+<nav class="navbar" id="navbar">
+  <div class="navbar-inner">
+    <a href="#" class="nav-logo" id="navLogo">Snap<span class="accent">Shop</span></a>
+    <button class="nav-pill" id="navPill" aria-label="Navigation">Navigate</button>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span class="bar"></span>
+      <span class="bar"></span>
+    </button>
+    <div class="nav-icon" id="navIcon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/>
+        <line x1="6" y1="17" x2="18" y2="17"/>
+      </svg>
+    </div>
   </div>
-  <a href="/register" class="nav-cta">Kostenlos starten</a>
 </nav>
 
-<!-- HERO -->
-<section class="hero" id="hero">
-  <!-- Interactive kitchen counter background -->
-  <div class="kitchen-counter" id="kitchenCounter">
-    <div class="kitchen-surface"></div>
-    <span class="ingredient size-lg" style="top:12%; left:6%;" data-speed="0.06" data-rotate="25">🍅</span>
-    <span class="ingredient size-sm" style="top:8%; right:10%;" data-speed="0.04" data-rotate="15">🌿</span>
-    <span class="ingredient" style="top:65%; left:3%;" data-speed="0.05" data-rotate="30">🧅</span>
-    <span class="ingredient size-xs" style="top:30%; right:5%;" data-speed="0.07" data-rotate="20">🌶️</span>
-    <span class="ingredient size-lg" style="bottom:18%; right:7%;" data-speed="0.05" data-rotate="-20">🥕</span>
-    <span class="ingredient size-sm" style="top:45%; left:8%;" data-speed="0.04" data-rotate="18">🍋</span>
-    <span class="ingredient" style="bottom:30%; left:12%;" data-speed="0.06" data-rotate="-25">🫑</span>
-    <span class="ingredient size-xs" style="top:20%; left:18%;" data-speed="0.03" data-rotate="12">🧄</span>
-    <span class="ingredient size-sm" style="bottom:12%; right:15%;" data-speed="0.05" data-rotate="22">🍅</span>
-    <span class="ingredient size-xs" style="top:55%; right:3%;" data-speed="0.06" data-rotate="-15">🥬</span>
-    <span class="ingredient" style="bottom:8%; left:25%;" data-speed="0.04" data-rotate="28">🫒</span>
-    <span class="ingredient size-lg" style="top:70%; right:18%;" data-speed="0.03" data-rotate="-18">🍳</span>
-    <span class="ingredient size-xs" style="top:5%; left:40%;" data-speed="0.05" data-rotate="10">🌱</span>
-    <span class="ingredient size-sm" style="bottom:25%; right:25%;" data-speed="0.04" data-rotate="-22">🧂</span>
-  </div>
-
-  <div class="hero-badge">
-    <span class="dot"></span>
-    3 Monate gratis — keine Kreditkarte nötig
-  </div>
-  <h1>Dein Kochbuch.<br><span class="gradient">Digitalisiert mit AI.</span></h1>
-  <p class="hero-sub">Fotografiere Rezepte aus deinem Kochbuch — die Zutaten landen direkt in deiner Einkaufsliste. Nie mehr abschreiben. Alles mit AI.</p>
-  <div class="hero-actions">
-    <a href="/register" class="btn-primary">
-      Jetzt gratis starten
-      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-    </a>
-    <a href="#features" class="btn-ghost">Mehr erfahren</a>
-  </div>
-  <p class="hero-free"><strong>3 Monate gratis</strong> · danach CHF 4.90/Mt.</p>
-
-  <div class="hero-phones">
-    <div class="phone side">
-      <img src="/screenshots/IMG_5832.PNG" alt="Entdecken Feed" />
-    </div>
-    <div class="phone center">
-      <img src="/screenshots/IMG_5834.PNG" alt="Rezepte" />
-    </div>
-    <div class="phone side">
-      <img src="/screenshots/IMG_5829.PNG" alt="Einkaufsliste" />
-    </div>
-  </div>
-</section>
-
-<!-- SOCIAL PROOF -->
-<div class="social-proof">
-  <p>Bekannt aus der Schweiz</p>
-  <div class="proof-logos">
-    <span>Fooby</span>
-    <span>Betty Bossi</span>
-    <span>Migusto</span>
-    <span>Swissmilk</span>
+<!-- OVERLAY MENU -->
+<div class="overlay" id="overlay">
+  <div class="overlay-links">
+    <a href="#" class="overlay-link font-instrument" data-i="0">Home</a>
+    <a href="#how" class="overlay-link font-instrument" data-i="1">So funktioniert's</a>
+    <a href="#features" class="overlay-link font-instrument" data-i="2">Features</a>
+    <a href="#pricing" class="overlay-link font-instrument" data-i="3">Preise</a>
   </div>
 </div>
 
-<!-- FEATURES -->
-<section class="features" id="features">
-  <div class="features-header reveal">
-    <div class="tag">Features</div>
-    <h2>Alles was du in<br>der Küche brauchst.</h2>
-    <p>AI-Power für deinen Kochalltag — von der Rezepterkennung bis zur Einkaufsliste.</p>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-video-wrap" id="heroVideo">
+    <video src="https://videos.pexels.com/video-files/7889576/7889576-uhd_2732_1440_25fps.mp4" autoplay muted loop playsinline></video>
   </div>
-
-  <div class="features-grid">
-    <div class="feature-card large reveal">
-      <div class="feature-thumb">
-        <img src="/screenshots/andrej_liebemann_Rezeptbuch_close_up_steht_auf_in_der_Kche_auf__a8f47aa1-f29b-4fea-a01b-66e24eaa2008.png" alt="Kochbuch fotografieren" />
-      </div>
-      <div class="feature-body">
-        <div class="feature-icon">📸</div>
-        <h3>Kochbuch fotografieren</h3>
-        <p>Halte dein Handy drauf — SnapShop erkennt Zutaten und Schritte automatisch. Die Zutaten landen direkt in deiner Einkaufsliste. Kein Abschreiben mehr.</p>
-      </div>
-    </div>
-
-    <div class="feature-card reveal">
-      <div class="feature-thumb">
-        <img src="/screenshots/bryan5790_realistic_iPhone_photo_of_someone_taking_a_picture_of_4c295896-6ae5-46fb-be49-fb849dfcc3e1.png" alt="Kühlschrank scannen" />
-      </div>
-      <div class="feature-body">
-        <div class="feature-icon">🧊</div>
-        <h3>Kühlschrank scannen</h3>
-        <p>Fotografiere was du hast — bekomme Rezeptvorschläge. Weniger Foodwaste, mehr Kreativität.</p>
-      </div>
-    </div>
-
-    <div class="feature-card reveal">
-      <div class="feature-thumb">
-        <img src="/screenshots/IMG_5833.PNG" alt="Kalorien tracken" />
-      </div>
-      <div class="feature-body">
-        <div class="feature-icon">📊</div>
-        <h3>Kalorien per Foto</h3>
-        <p>Teller fotografieren, Nährwerte erhalten. Kalorien, Protein, Fett — alles auf einen Blick.</p>
-      </div>
-    </div>
-
-    <div class="feature-card reveal">
-      <div class="feature-thumb">
-        <img src="/screenshots/IMG_5830.PNG" alt="AI Wochenplan" />
-      </div>
-      <div class="feature-body">
-        <div class="feature-icon">📅</div>
-        <h3>AI-Wochenplan</h3>
-        <p>Deine Woche in Sekunden geplant — abgestimmt auf Vorlieben, Allergien und Budget.</p>
-      </div>
-    </div>
-
-    <div class="feature-card large reveal">
-      <div class="feature-thumb">
-        <img src="/screenshots/noisesketch_Happy_woman_with_a_shopping_cart_at_the_supermarket_ce0b8d6b-f584-4740-b149-151d7da7f8ed.png" alt="Einkaufsliste" />
-      </div>
-      <div class="feature-body">
-        <div class="feature-icon">🛒</div>
-        <h3>Smarte Einkaufsliste</h3>
-        <p>Alle Zutaten automatisch zusammengefasst. Doppelte? Zusammengefasst. Mengen? Angepasst. Ein Einkauf — alles für die Woche.</p>
-      </div>
-    </div>
-
-    <div class="feature-card reveal">
-      <div class="feature-thumb">
-        <img src="/screenshots/restaurant.png" alt="Gericht erkennen" />
-      </div>
-      <div class="feature-body">
-        <div class="feature-icon">🍽️</div>
-        <h3>Gericht erkennen</h3>
-        <p>Im Restaurant begeistert? Foto machen — SnapShop liefert das Rezept zum Nachkochen.</p>
-      </div>
-    </div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <h1 class="font-instrument hero-h1" id="heroH1">Kochen neu erleben,<br class="hidden-mobile"> Genuss neu definiert</h1>
+    <p class="hero-sub" id="heroSub">Dein intelligenter Koch-Assistent. Rezepte scannen, Wochenpläne erstellen und smart einkaufen — alles in einer App.</p>
+    <a href="/register" class="hero-cta" id="heroCta">3 Monate gratis testen</a>
   </div>
 </section>
 
 <!-- HOW IT WORKS -->
-<section class="how-section">
-  <div class="how-inner">
-    <div class="how-header reveal">
-      <div class="tag">So funktioniert's</div>
-      <h2>In 3 Schritten loslegen.</h2>
-      <p>Kein kompliziertes Setup. Einfach starten.</p>
+<section class="section" id="how">
+  <span class="section-label" data-scroll>So funktioniert's</span>
+  <h2 class="section-title" data-scroll>In drei Schritten zum Genuss</h2>
+  <p class="section-desc" data-scroll>SnapShop verwandelt dein Smartphone in deinen persönlichen Koch-Assistenten.</p>
+  <div class="steps-grid">
+    <div class="step-card" data-scroll data-delay="0">
+      <div class="step-number">1</div>
+      <h3>Rezept scannen</h3>
+      <p>Fotografiere ein Rezept aus einem Kochbuch, einer Zeitschrift oder einer Webseite — unsere KI erkennt alle Zutaten und Schritte automatisch.</p>
     </div>
-    <div class="steps">
-      <div class="step reveal">
-        <div class="step-num">1</div>
-        <h3>Fotografieren</h3>
-        <p>Halte dein Handy auf ein Rezept — egal ob Kochbuch, Zeitschrift oder handgeschriebene Notiz.</p>
-      </div>
-      <div class="step reveal">
-        <div class="step-num">2</div>
-        <h3>AI erkennt</h3>
-        <p>SnapShop erkennt Zutaten, Mengen und Schritte automatisch und speichert das Rezept.</p>
-      </div>
-      <div class="step reveal">
-        <div class="step-num">3</div>
-        <h3>Einkaufen</h3>
-        <p>Zutaten landen auf deiner Einkaufsliste — zusammengefasst und sortiert. Fertig.</p>
+    <div class="step-card" data-scroll data-delay="100">
+      <div class="step-number">2</div>
+      <h3>Wochenplan erstellen</h3>
+      <p>Plane deine Woche mit personalisierten Rezeptvorschlägen. Deine Einkaufsliste wird automatisch generiert und mit deinem Haushalt geteilt.</p>
+    </div>
+    <div class="step-card" data-scroll data-delay="200">
+      <div class="step-number">3</div>
+      <h3>Kochen & geniessen</h3>
+      <p>Folge den Schritt-für-Schritt-Anleitungen im Kochmodus. Portionen werden automatisch umgerechnet, Timer inklusive.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="section" style="padding-top:0;padding-bottom:0;">
+    <div style="padding: 96px 0;">
+      <span class="section-label" data-scroll>Features</span>
+      <h2 class="section-title" data-scroll>Alles, was du brauchst</h2>
+      <div class="features-grid">
+        <div class="feature-card" data-scroll data-delay="0">
+          <div class="feature-icon">&#x1F4F8;</div>
+          <h3>KI-Rezepterkennung</h3>
+          <p>Fotografiere jedes Rezept und unsere KI digitalisiert es in Sekunden — mit Nährwerten und Allergenen.</p>
+        </div>
+        <div class="feature-card" data-scroll data-delay="80">
+          <div class="feature-icon">&#x1F4C5;</div>
+          <h3>Wochenplaner</h3>
+          <p>Plane deine Mahlzeiten für die ganze Woche. Personalisierte Vorschläge basierend auf deinem Geschmack.</p>
+        </div>
+        <div class="feature-card" data-scroll data-delay="160">
+          <div class="feature-icon">&#x1F6D2;</div>
+          <h3>Smarte Einkaufsliste</h3>
+          <p>Automatisch generiert, nach Supermarkt-Abteilung sortiert und mit deinem Haushalt synchronisiert.</p>
+        </div>
+        <div class="feature-card" data-scroll data-delay="240">
+          <div class="feature-icon">&#x1F468;&#x200D;&#x1F373;</div>
+          <h3>Kochmodus</h3>
+          <p>Schritt-für-Schritt-Anleitungen mit Timer, automatischer Portionsumrechnung und Sprachsteuerung.</p>
+        </div>
+        <div class="feature-card" data-scroll data-delay="320">
+          <div class="feature-icon">&#x1F525;</div>
+          <h3>Kalorien-Tracker</h3>
+          <p>Behalte den Überblick über deine Ernährung mit automatischer Nährwertberechnung für jedes Rezept.</p>
+        </div>
+        <div class="feature-card" data-scroll data-delay="400">
+          <div class="feature-icon">&#x1F465;</div>
+          <h3>Haushalt teilen</h3>
+          <p>Synchronisiere Rezepte, Einkaufslisten und Wochenpläne mit deiner Familie oder WG — in Echtzeit.</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- APP SCREENS -->
-<section class="screens-section" id="screens">
-  <div class="screens-header reveal">
-    <div class="tag">Ein Blick in die App</div>
-    <h2>Designed für die Küche.</h2>
-    <p>Swipe durch die wichtigsten Screens.</p>
-  </div>
-  <div class="screens-track">
-    <div class="screen-card">
-      <div class="screen-phone"><img src="/screenshots/IMG_5834.PNG" alt="Rezepte" /></div>
-      <h3>Deine Rezepte</h3>
-      <p>Alle Lieblingsrezepte an einem Ort.</p>
-    </div>
-    <div class="screen-card">
-      <div class="screen-phone"><img src="/screenshots/IMG_5831.PNG" alt="AI Analyse" /></div>
-      <h3>AI erkennt</h3>
-      <p>Rezept fotografiert — sofort gespeichert.</p>
-    </div>
-    <div class="screen-card">
-      <div class="screen-phone"><img src="/screenshots/IMG_5832.PNG" alt="Entdecken" /></div>
-      <h3>Entdecken</h3>
-      <p>Rezepte von Fooby, Betty Bossi & mehr.</p>
-    </div>
-    <div class="screen-card">
-      <div class="screen-phone"><img src="/screenshots/IMG_5830.PNG" alt="Wochenplan" /></div>
-      <h3>Wochenplan</h3>
-      <p>AI plant deine ganze Woche.</p>
-    </div>
-    <div class="screen-card">
-      <div class="screen-phone"><img src="/screenshots/IMG_5828.PNG" alt="Kochmodus" /></div>
-      <h3>Kochmodus</h3>
-      <p>Schritt für Schritt im Vollbild.</p>
-    </div>
-    <div class="screen-card">
-      <div class="screen-phone"><img src="/screenshots/IMG_5829.PNG" alt="Einkaufsliste" /></div>
-      <h3>Einkaufsliste</h3>
-      <p>Smart zusammengefasst.</p>
-    </div>
-    <div class="screen-card">
-      <div class="screen-phone"><img src="/screenshots/IMG_5833.PNG" alt="Kalorien" /></div>
-      <h3>Kalorien-Tracker</h3>
-      <p>Tagesübersicht mit Makros.</p>
-    </div>
+<!-- APP SCREENSHOTS -->
+<section class="section" id="app">
+  <span class="section-label" data-scroll>Die App</span>
+  <h2 class="section-title" data-scroll>Schön, intuitiv, durchdacht</h2>
+  <div class="screenshots-row">
+    <div class="screenshot-item" data-scroll data-delay="0"><img src="/screenshots/IMG_5834.PNG" alt="Rezepte" loading="lazy"></div>
+    <div class="screenshot-item" data-scroll data-delay="80"><img src="/screenshots/IMG_5828.PNG" alt="Kochmodus" loading="lazy"></div>
+    <div class="screenshot-item" data-scroll data-delay="160"><img src="/screenshots/IMG_5830.PNG" alt="Wochenplan" loading="lazy"></div>
+    <div class="screenshot-item" data-scroll data-delay="240"><img src="/screenshots/IMG_5829.PNG" alt="Einkaufsliste" loading="lazy"></div>
+    <div class="screenshot-item" data-scroll data-delay="320"><img src="/screenshots/IMG_5831.PNG" alt="KI Analyse" loading="lazy"></div>
+    <div class="screenshot-item" data-scroll data-delay="400"><img src="/screenshots/IMG_5833.PNG" alt="Kalorien-Tracker" loading="lazy"></div>
   </div>
 </section>
-
-<!-- FOOD MARQUEE -->
-<div class="marquee-section">
-  <div class="marquee-track">
-    <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=560&h=360&fit=crop" alt="Pizza" />
-    <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=560&h=360&fit=crop" alt="Salad" />
-    <img src="https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=560&h=360&fit=crop" alt="Pancakes" />
-    <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=560&h=360&fit=crop" alt="Bowl" />
-    <img src="https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=560&h=360&fit=crop" alt="Pasta" />
-    <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=560&h=360&fit=crop" alt="Plate" />
-    <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=560&h=360&fit=crop" alt="Fruits" />
-    <img src="https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=560&h=360&fit=crop" alt="Spread" />
-    <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=560&h=360&fit=crop" alt="Pizza" />
-    <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=560&h=360&fit=crop" alt="Salad" />
-    <img src="https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=560&h=360&fit=crop" alt="Pancakes" />
-    <img src="https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=560&h=360&fit=crop" alt="Bowl" />
-    <img src="https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=560&h=360&fit=crop" alt="Pasta" />
-    <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=560&h=360&fit=crop" alt="Plate" />
-    <img src="https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=560&h=360&fit=crop" alt="Fruits" />
-    <img src="https://images.unsplash.com/photo-1606787366850-de6330128bfc?w=560&h=360&fit=crop" alt="Spread" />
-  </div>
-</div>
 
 <!-- PRICING -->
-<section class="pricing-section" id="pricing">
-  <div class="pricing-header reveal">
-    <div class="tag">Preise</div>
-    <h2>3 Monate gratis testen.</h2>
-    <p>Kein Risiko. Keine Kreditkarte. Starte heute und entscheide dich später.</p>
-  </div>
-
-  <div class="pricing-grid">
-    <div class="price-card reveal">
-      <h3>Gratis-Test</h3>
-      <div class="price-amount">CHF 0 <span>/ 3 Monate</span></div>
-      <div class="price-period">Alle Features. Keine Einschränkung.</div>
-      <ul class="price-features">
-        <li>Unbegrenzte Rezepte</li>
-        <li>Kochbuch-Scanner (AI)</li>
-        <li>Kühlschrank-Scanner</li>
-        <li>AI-Wochenplan</li>
-        <li>Kalorien-Tracker</li>
-        <li>Smarte Einkaufsliste</li>
-        <li>Kochmodus</li>
-      </ul>
-      <a href="/register" class="price-btn outline">Jetzt starten</a>
-    </div>
-
-    <div class="price-card featured reveal">
-      <div class="price-badge">Nach dem Test</div>
-      <h3>SnapShop Pro</h3>
-      <div class="price-amount">CHF 4.90 <span>/ Monat</span></div>
-      <div class="price-period">Weniger als ein Kaffee pro Woche.</div>
-      <ul class="price-features">
-        <li>Alles aus dem Gratis-Test</li>
-        <li>Unbegrenzte AI-Nutzung</li>
-        <li>Zutaten-Alternativen (AI)</li>
-        <li>Haushalt teilen</li>
-        <li>Inspirationsfeed</li>
-        <li>Prioritäts-Support</li>
-        <li>Alle zukünftigen Features</li>
-      </ul>
-      <a href="/register" class="price-btn filled">3 Monate gratis starten</a>
-    </div>
-  </div>
-
-  <div class="pricing-note">
-    <strong>Warum kostet SnapShop Pro etwas?</strong> Jedes Rezept-Foto und jeder Kühlschrank-Scan läuft über leistungsstarke AI-Server. Mit CHF 4.90/Mt. hilfst du uns, die Server warm zu halten — und bekommst dafür unbegrenzte AI-Power.
+<section class="section" id="pricing" style="text-align:center;">
+  <span class="section-label" data-scroll>Preise</span>
+  <h2 class="section-title" data-scroll>Einfach. Transparent. Fair.</h2>
+  <p class="section-desc" data-scroll style="margin:0 auto;">Starte kostenlos und entscheide dann, ob SnapShop zu dir passt.</p>
+  <div class="pricing-card" data-scroll>
+    <div class="pricing-badge">3 Monate Gratis</div>
+    <div class="pricing-price">CHF 4.90 <span>/ Monat</span></div>
+    <p class="pricing-note">Nach der kostenlosen Testphase. Jederzeit kündbar.</p>
+    <ul class="pricing-features">
+      <li>Unbegrenzt Rezepte scannen &amp; speichern</li>
+      <li>KI-gestützte Wochenpläne</li>
+      <li>Smarte Einkaufslisten</li>
+      <li>Kochmodus mit Timer</li>
+      <li>Kalorien- &amp; Nährwert-Tracking</li>
+      <li>Haushalt-Synchronisation</li>
+      <li>Alle zukünftigen Features inklusive</li>
+    </ul>
+    <a href="/register" class="pricing-cta">Jetzt gratis starten</a>
   </div>
 </section>
 
-<!-- INSTALL -->
-<section class="install-section" id="install">
-  <div class="install-inner">
-    <div class="tag">Installation</div>
-    <h2>In 30 Sekunden auf deinem Homescreen.</h2>
-    <p>Kein App Store nötig. SnapShop läuft als Web-App direkt auf deinem Gerät.</p>
-
-    <div class="install-steps">
-      <div class="install-card reveal">
-        <div class="install-num">1</div>
-        <h3>Teilen antippen</h3>
-        <p>Tippe in Safari auf das Teilen-Symbol (Quadrat mit Pfeil).</p>
-      </div>
-      <div class="install-card reveal">
-        <div class="install-num">2</div>
-        <h3>Zum Home-Bildschirm</h3>
-        <p>Scrolle nach unten und tippe auf «Zum Home-Bildschirm».</p>
-      </div>
-      <div class="install-card reveal">
-        <div class="install-num">3</div>
-        <h3>Hinzufügen — fertig!</h3>
-        <p>Tippe «Hinzufügen». SnapShop erscheint als App-Icon.</p>
-      </div>
-    </div>
-    <div class="install-note">
-      <span>📱</span>
-      <span><strong>Android?</strong> ⋮ → «Zum Startbildschirm hinzufügen»</span>
-    </div>
-  </div>
-</section>
-
-<!-- FINAL CTA -->
-<section class="final-cta">
-  <h2>Bereit, smarter<br>zu kochen?</h2>
-  <p>Kochbuch fotografieren, Zutaten auf die Einkaufsliste — nie mehr abschreiben. 3 Monate gratis.</p>
-  <a href="/register" class="btn-primary">
-    Jetzt gratis starten
-    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-  </a>
+<!-- INSTALL CTA -->
+<section class="section install-section">
+  <span class="section-label" data-scroll>Bereit?</span>
+  <h2 class="section-title" data-scroll>Starte jetzt deine kulinarische Reise</h2>
+  <p class="section-desc" data-scroll style="margin:0 auto;">Keine Kreditkarte nötig. 3 Monate kostenlos testen.</p>
+  <a href="/register" class="install-cta" data-scroll data-delay="200">Jetzt gratis starten</a>
 </section>
 
 <!-- FOOTER -->
-<footer>
-  <div class="footer-links">
-    <a href="/nutzungsbedingungen.html">Nutzungsbedingungen</a>
-    <a href="/datenschutz.html">Datenschutz</a>
-    <a href="#">Kontakt</a>
-  </div>
-  <p>&copy; 2026 SnapShop — We Master AG. Alle Rechte vorbehalten.</p>
+<footer class="footer">
+  <p>&copy; 2026 SnapShop &middot; <a href="/impressum">Impressum</a> &middot; <a href="/datenschutz">Datenschutz</a></p>
 </footer>
 
 <script>
-  // Navbar scroll effect
-  const nav = document.getElementById('navbar');
-  window.addEventListener('scroll', () => {
-    nav.style.background = window.scrollY > 40
-      ? 'rgba(26,26,46,0.92)'
-      : 'rgba(26,26,46,0.7)';
-  });
+(function() {
+  'use strict';
 
-  // Scroll reveal
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(e => {
-      if (e.isIntersecting) e.target.classList.add('visible');
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  // --- Navbar scroll ---
+  var navbar = document.getElementById('navbar');
+  window.addEventListener('scroll', function() {
+    navbar.classList.toggle('scrolled', window.scrollY > 40);
+  }, { passive: true });
 
-  // Kitchen counter ingredient motion
-  (() => {
-    const hero = document.getElementById('hero');
-    const ingredients = document.querySelectorAll('.ingredient');
-    if (!hero || !ingredients.length) return;
+  // --- Navbar entrance ---
+  var logo = document.getElementById('navLogo');
+  var pill = document.getElementById('navPill');
+  var hamburger = document.getElementById('hamburger');
+  var navIcon = document.getElementById('navIcon');
 
-    let mouseX = 0, mouseY = 0;
-    let ticking = false;
+  setTimeout(function() {
+    logo.classList.add('mounted');
+    setTimeout(function() { pill.classList.add('mounted'); hamburger.classList.add('mounted'); }, 200);
+    setTimeout(function() { navIcon.classList.add('mounted'); }, 400);
+  }, 100);
 
-    hero.addEventListener('mousemove', (e) => {
-      const rect = hero.getBoundingClientRect();
-      mouseX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;   // -1 to 1
-      mouseY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+  // --- Overlay menu ---
+  var overlay = document.getElementById('overlay');
+  var overlayLinks = document.querySelectorAll('.overlay-link');
+  var menuOpen = false;
 
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(() => {
-          ingredients.forEach(el => {
-            const speed = parseFloat(el.dataset.speed) || 0.05;
-            const maxRotate = parseFloat(el.dataset.rotate) || 15;
-            const dx = mouseX * speed * 120;
-            const dy = mouseY * speed * 80;
-            const rot = mouseX * maxRotate;
+  function toggleMenu() {
+    menuOpen = !menuOpen;
+    overlay.classList.toggle('open', menuOpen);
+    hamburger.classList.toggle('open', menuOpen);
+    pill.textContent = menuOpen ? 'Close' : 'Navigate';
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
 
-            el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
-            el.style.animation = 'none'; // pause idle float while interacting
-          });
-          ticking = false;
+    overlayLinks.forEach(function(link, i) {
+      if (menuOpen) {
+        link.style.transitionDelay = (150 + i * 80) + 'ms';
+        requestAnimationFrame(function() {
+          link.style.opacity = '1';
+          link.style.transform = 'translateY(0)';
         });
+      } else {
+        link.style.transitionDelay = '0ms';
+        link.style.opacity = '0';
+        link.style.transform = 'translateY(24px)';
       }
     });
+  }
 
-    hero.addEventListener('mouseleave', () => {
-      ingredients.forEach(el => {
-        el.style.transform = '';
-        el.style.animation = ''; // resume idle float
-      });
+  pill.addEventListener('click', toggleMenu);
+  hamburger.addEventListener('click', toggleMenu);
+  overlayLinks.forEach(function(link) {
+    link.addEventListener('click', function() { if (menuOpen) toggleMenu(); });
+  });
+
+  // --- Hero entrance ---
+  var heroVideo = document.getElementById('heroVideo');
+  var heroH1 = document.getElementById('heroH1');
+  var heroSub = document.getElementById('heroSub');
+  var heroCta = document.getElementById('heroCta');
+
+  setTimeout(function() {
+    heroVideo.classList.add('mounted');
+    setTimeout(function() { heroH1.classList.add('mounted'); }, 400);
+    setTimeout(function() { heroSub.classList.add('mounted'); }, 600);
+    setTimeout(function() { heroCta.classList.add('mounted'); }, 800);
+  }, 300);
+
+  // --- Scroll animations ---
+  var scrollElements = document.querySelectorAll('[data-scroll]');
+  var observer = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        var delay = parseInt(entry.target.dataset.delay || '0');
+        setTimeout(function() {
+          entry.target.classList.add('visible');
+        }, delay);
+        observer.unobserve(entry.target);
+      }
     });
-  })();
-</script>
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
 
+  scrollElements.forEach(function(el) { observer.observe(el); });
+})();
+</script>
 </body>
 </html>
