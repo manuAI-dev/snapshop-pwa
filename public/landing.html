@@ -92,6 +92,66 @@
       background: radial-gradient(circle, rgba(242,137,79,0.15) 0%, transparent 70%);
       pointer-events: none;
     }
+
+    /* ── KITCHEN COUNTER BACKGROUND ── */
+    .kitchen-counter {
+      position: absolute; inset: 0; z-index: 0;
+      overflow: hidden; pointer-events: none;
+    }
+    .hero > *:not(.kitchen-counter) { position: relative; z-index: 1; }
+
+    .ingredient {
+      position: absolute;
+      font-size: 48px;
+      transition: transform 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+      filter: drop-shadow(0 8px 16px rgba(0,0,0,0.35));
+      will-change: transform;
+      user-select: none;
+      opacity: 0.7;
+    }
+    .ingredient.size-lg { font-size: 64px; }
+    .ingredient.size-sm { font-size: 36px; }
+    .ingredient.size-xs { font-size: 28px; }
+
+    /* Subtle floating idle animation */
+    @keyframes floatA { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
+    @keyframes floatB { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-12px) rotate(-4deg); } }
+    @keyframes floatC { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-6px) rotate(5deg); } }
+
+    .ingredient:nth-child(odd)  { animation: floatA 4s ease-in-out infinite; }
+    .ingredient:nth-child(even) { animation: floatB 5s ease-in-out infinite; }
+    .ingredient:nth-child(3n)   { animation: floatC 6s ease-in-out infinite; }
+
+    /* Wooden surface gradient at the bottom */
+    .kitchen-surface {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 35%;
+      background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(101, 67, 33, 0.08) 30%,
+        rgba(101, 67, 33, 0.15) 60%,
+        rgba(101, 67, 33, 0.22) 100%
+      );
+      pointer-events: none;
+    }
+    .kitchen-surface::before {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 80px,
+        rgba(255,255,255,0.02) 80px,
+        rgba(255,255,255,0.02) 82px
+      );
+    }
+
+    @media (max-width: 768px) {
+      .ingredient { opacity: 0.5; }
+      .ingredient.size-lg { font-size: 44px; }
+      .ingredient { font-size: 36px; }
+      .ingredient.size-sm { font-size: 28px; }
+      .ingredient.size-xs { font-size: 22px; }
+    }
     .hero-badge {
       display: inline-flex; align-items: center; gap: 8px;
       background: var(--glass); border: 1px solid var(--glass-border);
@@ -510,7 +570,26 @@
 </nav>
 
 <!-- HERO -->
-<section class="hero">
+<section class="hero" id="hero">
+  <!-- Interactive kitchen counter background -->
+  <div class="kitchen-counter" id="kitchenCounter">
+    <div class="kitchen-surface"></div>
+    <span class="ingredient size-lg" style="top:12%; left:6%;" data-speed="0.06" data-rotate="25">🍅</span>
+    <span class="ingredient size-sm" style="top:8%; right:10%;" data-speed="0.04" data-rotate="15">🌿</span>
+    <span class="ingredient" style="top:65%; left:3%;" data-speed="0.05" data-rotate="30">🧅</span>
+    <span class="ingredient size-xs" style="top:30%; right:5%;" data-speed="0.07" data-rotate="20">🌶️</span>
+    <span class="ingredient size-lg" style="bottom:18%; right:7%;" data-speed="0.05" data-rotate="-20">🥕</span>
+    <span class="ingredient size-sm" style="top:45%; left:8%;" data-speed="0.04" data-rotate="18">🍋</span>
+    <span class="ingredient" style="bottom:30%; left:12%;" data-speed="0.06" data-rotate="-25">🫑</span>
+    <span class="ingredient size-xs" style="top:20%; left:18%;" data-speed="0.03" data-rotate="12">🧄</span>
+    <span class="ingredient size-sm" style="bottom:12%; right:15%;" data-speed="0.05" data-rotate="22">🍅</span>
+    <span class="ingredient size-xs" style="top:55%; right:3%;" data-speed="0.06" data-rotate="-15">🥬</span>
+    <span class="ingredient" style="bottom:8%; left:25%;" data-speed="0.04" data-rotate="28">🫒</span>
+    <span class="ingredient size-lg" style="top:70%; right:18%;" data-speed="0.03" data-rotate="-18">🍳</span>
+    <span class="ingredient size-xs" style="top:5%; left:40%;" data-speed="0.05" data-rotate="10">🌱</span>
+    <span class="ingredient size-sm" style="bottom:25%; right:25%;" data-speed="0.04" data-rotate="-22">🧂</span>
+  </div>
+
   <div class="hero-badge">
     <span class="dot"></span>
     3 Monate gratis — keine Kreditkarte nötig
@@ -838,6 +917,46 @@
     });
   }, { threshold: 0.1 });
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // Kitchen counter ingredient motion
+  (() => {
+    const hero = document.getElementById('hero');
+    const ingredients = document.querySelectorAll('.ingredient');
+    if (!hero || !ingredients.length) return;
+
+    let mouseX = 0, mouseY = 0;
+    let ticking = false;
+
+    hero.addEventListener('mousemove', (e) => {
+      const rect = hero.getBoundingClientRect();
+      mouseX = ((e.clientX - rect.left) / rect.width - 0.5) * 2;   // -1 to 1
+      mouseY = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          ingredients.forEach(el => {
+            const speed = parseFloat(el.dataset.speed) || 0.05;
+            const maxRotate = parseFloat(el.dataset.rotate) || 15;
+            const dx = mouseX * speed * 120;
+            const dy = mouseY * speed * 80;
+            const rot = mouseX * maxRotate;
+
+            el.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
+            el.style.animation = 'none'; // pause idle float while interacting
+          });
+          ticking = false;
+        });
+      }
+    });
+
+    hero.addEventListener('mouseleave', () => {
+      ingredients.forEach(el => {
+        el.style.transform = '';
+        el.style.animation = ''; // resume idle float
+      });
+    });
+  })();
 </script>
 
 </body>
